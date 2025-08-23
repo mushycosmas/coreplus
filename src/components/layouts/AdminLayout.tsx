@@ -20,7 +20,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </div>
 
         <Nav className="flex-column sidebar-nav">
-          <Nav.Link href="/admin/pages/home" className="text-white"><FaHome className="me-2" /> Home</Nav.Link>
+          <Nav.Link href="/admin/dashboard" className="text-white"><FaHome className="me-2" /> Home</Nav.Link>
           <Nav.Link href="/admin/pages/about" className="text-white"><FaInfoCircle className="me-2" /> About</Nav.Link>
           <Nav.Link href="/admin/pages/services" className="text-white"><FaServicestack className="me-2" /> Services</Nav.Link>
           <Nav.Link href="/admin/pages/contact" className="text-white"><FaEnvelope className="me-2" /> Contact</Nav.Link>
@@ -29,6 +29,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <Nav.Link href="/admin/pages/manage-mission-vision" className="text-white">
     <FaBullseye className="me-2" /> Mission & Vision
   </Nav.Link>
+  <Nav.Link href="/admin/pages/manage-contact-info" className="text-white">
+  <FaEnvelope className="me-2" /> Contact Info
+</Nav.Link>
 
          
         </Nav>
