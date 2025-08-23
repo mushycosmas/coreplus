@@ -59,6 +59,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   <Nav.Link href="/admin/pages/hero-section" className="text-white">
     <FaImage className="me-2" /> Hero Section
   </Nav.Link>
+
+ <Nav.Link href="/admin/pages/client" className="text-white">
+    <FaImage className="me-2" /> Clients
+  </Nav.Link>
 </Nav>
 
 
