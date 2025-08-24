@@ -9,6 +9,10 @@ interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;
 }
 
+interface AboutRow {
+  image: string | null;
+}
+
 const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
 
 router.use(upload.single('image'));
@@ -20,7 +24,7 @@ router.put(async (req, res) => {
   try {
     // Fetch existing image
     const [existing] = await db.query('SELECT image FROM about WHERE id = ?', [id]);
-    const existingItem = (existing as any)[0];
+    const existingItem = (existing as AboutRow[])[0]; // Properly typed
 
     let imagePath = existingItem?.image || null;
 
@@ -38,8 +42,10 @@ router.put(async (req, res) => {
     );
 
     res.status(200).json({ id, title, description, image: imagePath, icon });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message || 'Update failed' });
+  } catch (error: unknown) {
+    // Properly typed error
+    const errorMessage = error instanceof Error ? error.message : 'Update failed';
+    res.status(500).json({ message: errorMessage });
   }
 });
 
@@ -48,7 +54,7 @@ router.delete(async (req, res) => {
 
   try {
     const [rows] = await db.query('SELECT image FROM about WHERE id = ?', [id]);
-    const about = (rows as any)[0];
+    const about = (rows as AboutRow[])[0]; // Properly typed
 
     if (about?.image) {
       const imgPath = path.join(process.cwd(), 'public', about.image);
@@ -57,8 +63,10 @@ router.delete(async (req, res) => {
 
     await db.query('DELETE FROM about WHERE id = ?', [id]);
     res.status(200).json({ message: 'Deleted successfully' });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message || 'Deletion failed' });
+  } catch (error: unknown) {
+    // Properly typed error
+    const errorMessage = error instanceof Error ? error.message : 'Deletion failed';
+    res.status(500).json({ message: errorMessage });
   }
 });
 

@@ -1,7 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { db } from '@/lib/db';
-import { createRouter } from 'next-connect';
-import upload from '@/lib/middleware/upload';
+import type { NextApiRequest, NextApiResponse } from "next";
+import { db } from "@/lib/db";
+import { createRouter } from "next-connect";
+import upload from "@/lib/middleware/upload";
 
 interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;
@@ -9,15 +9,22 @@ interface NextApiRequestWithFile extends NextApiRequest {
 
 const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
 
-router.use(upload.single('image'));
+router.use(upload.single("image"));
 
 // GET /api/about
 router.get(async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM about ORDER BY id DESC');
+    const [rows] = await db.query("SELECT * FROM about ORDER BY id DESC");
+
+    // If rows are empty
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "No about data found" });
+    }
+
     res.status(200).json(rows);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message || 'Failed to fetch about items' });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to fetch about items";
+    res.status(500).json({ message: errorMessage });
   }
 });
 
@@ -27,34 +34,41 @@ router.post(async (req, res) => {
   const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
 
   try {
-    const [result] = await db.query(
-      'INSERT INTO about (title, description, image, icon) VALUES (?, ?, ?, ?)',
-      [title, description, imagePath, icon]
-    );
+    const [result] = await db.query("INSERT INTO about (title, description, image, icon) VALUES (?, ?, ?, ?)", [
+      title,
+      description,
+      imagePath,
+      icon,
+    ]);
+
+    // Type assertion for insertId, using the proper result structure
+    const insertId = (result as { insertId: number }).insertId;
 
     res.status(201).json({
-      id: (result as any).insertId,
+      id: insertId,
       title,
       description,
       image: imagePath,
       icon,
     });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message || 'Failed to create about' });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to create about";
+    res.status(500).json({ message: errorMessage });
   }
 });
 
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: false, // Because we're using file uploads
   },
 };
 
 export default router.handler({
   onError(error, req, res) {
-    res.status(500).json({ message: error.message });
+    const errorMessage = error instanceof Error ? error.message : "Internal server error";
+    res.status(500).json({ message: errorMessage });
   },
   onNoMatch(req, res) {
-    res.status(405).json({ message: 'Method not allowed' });
+    res.status(405).json({ message: "Method not allowed" });
   },
 });
