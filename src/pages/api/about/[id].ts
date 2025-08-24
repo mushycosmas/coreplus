@@ -1,81 +1,66 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
 import { db } from "@/lib/db";
-import type { RowDataPacket } from "mysql2";
+import multer from "multer";
+import fs from "fs";
+import path from "path";
 
 // Extend NextApiRequest to include optional file
 interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;
 }
 
-interface AboutData {
-  id: number;
-  title: string;
-  description: string;
-  image?: string | null;
-  icon?: string;
-}
-
-// Multer setup
+// Multer storage & filter
 const storage = multer.diskStorage({
   destination: path.join(process.cwd(), "public/uploads"),
   filename: (_, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
 });
 const upload = multer({
   storage,
-  fileFilter: (_, file, cb) => {
+  fileFilter: (_, file, cb: multer.FileFilterCallback) => {
     if (!file.mimetype.startsWith("image/")) cb(new Error("Only images allowed"));
     else cb(null, true);
   },
 });
 
-// Helper to run multer as a promise
+// Helper to run multer in Next.js API
 const runMiddleware = (req: NextApiRequestWithFile, res: NextApiResponse) =>
   new Promise<void>((resolve, reject) => {
-    upload.single("image")(req as any, res as any, (err: any) => {
-      if (err) reject(err);
-      else resolve();
-    });
+    upload.single("image")(req, res, (err) => (err ? reject(err) : resolve()));
   });
 
 export const config = {
   api: {
-    bodyParser: false, // required for file uploads
+    bodyParser: false,
   },
 };
 
-export default async function handler(
-  req: NextApiRequestWithFile,
-  res: NextApiResponse
-) {
+// Handler
+export default async function handler(req: NextApiRequestWithFile, res: NextApiResponse) {
   const { id } = req.query;
 
   try {
-    // Run multer middleware only when PUT method
     if (req.method === "PUT") {
       await runMiddleware(req, res);
 
-      const { title, description, icon } = req.body;
+      const { title, description, icon } = req.body as {
+        title: string;
+        description: string;
+        icon?: string;
+      };
 
-      // Get existing row
-      const [rows] = await db.query<RowDataPacket[]>(
+      const [existingRows] = await db.query<{ image?: string }[]>(
         "SELECT image FROM about WHERE id = ?",
         [id]
       );
-      const existing = rows[0] as AboutData | undefined;
+      const existing = existingRows[0];
 
-      // Compute new image path
-      const imagePath: string | null = req.file
-        ? (() => {
-            if (existing?.image) {
-              const oldPath = path.join(process.cwd(), "public", existing.image);
-              if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-            }
-            return `/uploads/${req.file.filename}`;
-          })()
-        : existing?.image ?? null;
+      const imagePath = req.file ? `/uploads/${req.file.filename}` : existing?.image ?? null;
+
+      // Delete old image if replaced
+      if (req.file && existing?.image) {
+        const oldPath = path.join(process.cwd(), "public", existing.image);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
 
       await db.query(
         "UPDATE about SET title = ?, description = ?, icon = ?, image = ? WHERE id = ?",
@@ -86,14 +71,11 @@ export default async function handler(
     }
 
     if (req.method === "DELETE") {
-      const [rows] = await db.query<RowDataPacket[]>(
-        "SELECT image FROM about WHERE id = ?",
-        [id]
-      );
-      const existing = rows[0] as AboutData | undefined;
+      const [rows] = await db.query<{ image?: string }[]>("SELECT image FROM about WHERE id = ?", [id]);
+      const about = rows[0];
 
-      if (existing?.image) {
-        const imgPath = path.join(process.cwd(), "public", existing.image);
+      if (about?.image) {
+        const imgPath = path.join(process.cwd(), "public", about.image);
         if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
       }
 
@@ -101,10 +83,9 @@ export default async function handler(
       return res.status(200).json({ message: "Deleted successfully" });
     }
 
-    res.setHeader("Allow", ["PUT", "DELETE"]);
-    return res.status(405).json({ message: `Method ${req.method} not allowed` });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    res.status(500).json({ message });
+    return res.status(405).json({ message: "Method not allowed" });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Server error";
+    return res.status(500).json({ message });
   }
 }
