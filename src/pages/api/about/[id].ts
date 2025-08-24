@@ -5,9 +5,12 @@ import multer, { FileFilterCallback } from "multer";
 import fs from "fs";
 import path from "path";
 
-// Extend NextApiRequest to include the file from multer
 interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;
+}
+
+interface AboutRow {
+  image: string | null;
 }
 
 // Multer storage
@@ -22,10 +25,10 @@ const storage = multer.diskStorage({
   },
 });
 
-// Multer instance
+// Multer instance (use `any` only here for the request)
 const upload = multer({
   storage,
-  fileFilter: (req: NextApiRequest, file: Express.Multer.File, cb: FileFilterCallback) => {
+  fileFilter: (req: any, file: Express.Multer.File, cb: FileFilterCallback) => {
     if (!file.mimetype.startsWith("image/")) {
       return cb(new Error("Only image files are allowed"));
     }
@@ -33,15 +36,10 @@ const upload = multer({
   },
 });
 
-interface AboutRow {
-  image: string | null;
-}
-
 const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
 
 // Type-safe Multer middleware wrapper
 const multerMiddleware = upload.single("image");
-
 router.use((req: NextApiRequestWithFile, res: NextApiResponse, next) => {
   multerMiddleware(req, res, (err?: unknown) => {
     if (err instanceof Error) return res.status(400).json({ message: err.message });
