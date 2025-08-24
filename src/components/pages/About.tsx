@@ -86,7 +86,7 @@ const About: React.FC = () => {
       <Container className="my-5">
         <Row className="align-items-center">
           <Col md={6}>
-            <h2>{aboutData.title}</h2>
+             <h2 className="section-title">About Us</h2>
             <p>{aboutData.description}</p>
           </Col>
           <Col md={6}>
