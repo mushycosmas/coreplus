@@ -15,6 +15,7 @@ const storage = multer.diskStorage({
   destination: path.join(process.cwd(), "public/uploads"),
   filename: (_, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
 });
+
 const upload = multer({
   storage,
   fileFilter: (_, file, cb) => {
@@ -47,20 +48,23 @@ export default async function handler(req: NextApiRequestWithFile, res: NextApiR
   if (req.method === "PUT") {
     try {
       const { title, description, icon } = req.body;
-      let imagePath: string | null = req.file ? `/uploads/${req.file.filename}` : null;
+      const newImagePath: string | null = req.file ? `/uploads/${req.file.filename}` : null;
 
       const [existingRows] = await db.query("SELECT image FROM about WHERE id=?", [id]);
       const existing = (existingRows as { image?: string }[])[0];
 
       // Delete old image if replaced
-      if (existing?.image && imagePath) {
+      if (existing?.image && newImagePath) {
         const oldPath = path.join(process.cwd(), "public", existing.image);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
 
+      // Use new image if uploaded, otherwise keep existing
+      const imagePathToSave = newImagePath ?? existing?.image ?? null;
+
       await db.query(
         "UPDATE about SET title=?, description=?, icon=?, image=? WHERE id=?",
-        [title, description, icon, imagePath ?? existing?.image ?? null, id]
+        [title, description, icon, imagePathToSave, id]
       );
 
       res.status(200).json({ message: "Updated successfully" });
