@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-// Font import
+// Font imports
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -17,19 +17,22 @@ const geistMono = Geist_Mono({
 // Metadata for SEO and social sharing
 export const metadata: Metadata = {
   title: "CorePlus Consulting Limited",
-  description: "Empowering businesses with innovative HR consulting solutions that drive growth and efficiency.",
-  keywords: "HR consulting, business solutions, workforce strategies, CorePlus, business growth, efficiency",
+  description:
+    "Empowering businesses with innovative HR consulting solutions that drive growth and efficiency.",
+  keywords:
+    "HR consulting, business solutions, workforce strategies, CorePlus, business growth, efficiency",
   author: "CorePlus Consulting Limited",
-  robots: "index, follow", // Allows search engines to index the page
+  robots: "index, follow",
   openGraph: {
     type: "website",
     title: "CorePlus Consulting Limited",
-    description: "Empowering businesses with innovative HR consulting solutions that drive growth and efficiency.",
-    url: "https://coreplus.co.ttz", // Replace with actual site URL
-    site_name: "CorePlus Consulting",
+    description:
+      "Empowering businesses with innovative HR consulting solutions that drive growth and efficiency.",
+    url: "https://coreplus.co.tz",
+    siteName: "CorePlus Consulting", // ✅ Correct property name
     images: [
       {
-        url: "/images/og-image.jpg", // Replace with your OG image URL
+        url: "/images/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "CorePlus Consulting",
@@ -37,18 +40,15 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    card: "summary_large_image", // Card type for Twitter sharing
+    card: "summary_large_image",
     title: "CorePlus Consulting Limited",
-    description: "Empowering businesses with innovative HR consulting solutions that drive growth and efficiency.",
-    image: "/images/twitter-image.jpg", // Replace with your Twitter image URL
+    description:
+      "Empowering businesses with innovative HR consulting solutions that drive growth and efficiency.",
+    image: "/images/twitter-image.jpg",
   },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: React.PropsWithChildren<{}>) {
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
