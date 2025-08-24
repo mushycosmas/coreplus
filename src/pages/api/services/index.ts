@@ -1,90 +1,85 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { db } from '@/lib/db';
-import { createRouter } from 'next-connect';
-import upload from '@/lib/middleware/upload';
-import { ResultSetHeader, RowDataPacket } from 'mysql2';
+import type { NextApiRequest, NextApiResponse } from "next";
+import { db } from "@/lib/db";
+import { RowDataPacket, ResultSetHeader } from "mysql2";
+import fs from "fs";
+import path from "path";
+import formidable, { File } from "formidable";
 
-// Extend NextApiRequest to support file upload
-interface NextApiRequestWithFile extends NextApiRequest {
-  file?: Express.Multer.File;
-}
-
-// Define service type (based on your table structure)
-interface Service extends RowDataPacket {
-  id: number;
-  title: string;
-  description: string;
-  icon: string;
-  image: string | null;
-}
-
-const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
-
-// Middleware to handle file upload
-router.use(upload.single('image'));
-
-// GET /api/services
-router.get(async (req, res) => {
-  try {
-    const [rows] = await db.query<Service[]>(
-      'SELECT * FROM services ORDER BY id DESC'
-    );
-    res.status(200).json(rows);
-  } catch (error: unknown) {
-    console.error('Error fetching services:', error);
-    res.status(500).json({
-      message: error instanceof Error ? error.message : 'Failed to fetch services',
-    });
-  }
-});
-
-// POST /api/services
-router.post(async (req, res) => {
-  const { title, description, icon } = req.body;
-
-  // Input validation
-  if (!title || !description || !icon) {
-    return res.status(400).json({ message: 'Title, description, and icon are required' });
-  }
-
-  // Handle optional file upload
-  const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
-
-  try {
-    const [result] = await db.query<ResultSetHeader>(
-      'INSERT INTO services (title, description, icon, image) VALUES (?, ?, ?, ?)',
-      [title, description, icon, imagePath]
-    );
-
-    res.status(201).json({
-      id: result.insertId,
-      title,
-      description,
-      icon,
-      image: imagePath,
-    });
-  } catch (error: unknown) {
-    console.error('Error creating service:', error);
-    res.status(500).json({
-      message: error instanceof Error ? error.message : 'Failed to create service',
-    });
-  }
-});
-
+// Disable Next.js default body parser
 export const config = {
   api: {
-    bodyParser: false, // Required for multer
+    bodyParser: false,
   },
 };
 
-export default router.handler({
-  onError(error, req, res) {
-    console.error('API error:', error);
-    res
-      .status(500)
-      .json({ message: error instanceof Error ? error.message : 'Unexpected error' });
-  },
-  onNoMatch(req, res) {
-    res.status(405).json({ message: 'Method not allowed' });
-  },
-});
+// Service type
+interface Service {
+  id?: number; // optional for POST
+  title: string;
+  description: string;
+  icon: string;
+  image?: string | null;
+}
+
+// Parse form using formidable
+async function parseForm(req: NextApiRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> {
+  const uploadDir = path.join(process.cwd(), "public/uploads");
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+  const form = formidable({
+    multiples: false,
+    uploadDir,
+    keepExtensions: true,
+  });
+
+  return new Promise((resolve, reject) => {
+    form.parse(req, (err, fields, files) => {
+      if (err) reject(err);
+      else resolve({ fields, files });
+    });
+  });
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    // GET /api/services
+    if (req.method === "GET") {
+      const [rows] = await db.query<RowDataPacket[]>("SELECT * FROM services ORDER BY id DESC");
+      return res.status(200).json(rows as Service[]);
+    }
+
+    // POST /api/services
+    if (req.method === "POST") {
+      const { fields, files } = await parseForm(req);
+
+      const title = Array.isArray(fields.title) ? fields.title[0] : fields.title;
+      const description = Array.isArray(fields.description) ? fields.description[0] : fields.description;
+      const icon = Array.isArray(fields.icon) ? fields.icon[0] : fields.icon;
+
+      if (!title || !description || !icon) {
+        return res.status(400).json({ message: "Title, description, and icon are required" });
+      }
+
+      const uploadedFile = files.image as File | undefined;
+      const imagePath = uploadedFile ? `/uploads/${path.basename(uploadedFile.filepath)}` : null;
+
+      const [result] = await db.query<ResultSetHeader>(
+        "INSERT INTO services (title, description, icon, image) VALUES (?, ?, ?, ?)",
+        [title, description, icon, imagePath]
+      );
+
+      return res.status(201).json({
+        id: result.insertId,
+        title,
+        description,
+        icon,
+        image: imagePath,
+      });
+    }
+
+    return res.status(405).json({ message: "Method not allowed" });
+  } catch (err: unknown) {
+    console.error("Services API Error:", err);
+    return res.status(500).json({ message: err instanceof Error ? err.message : "Internal server error" });
+  }
+}
