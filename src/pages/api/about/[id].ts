@@ -1,17 +1,18 @@
+// src/pages/api/about/[id].ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { db } from "@/lib/db";
 import { createRouter } from "next-connect";
 import upload from "@/lib/middleware/upload";
 import fs from "fs";
 import path from "path";
-import { Request, Response, NextFunction } from "express";
+import { db } from "@/lib/db";
+import type { RowDataPacket } from "mysql2";
 
 // Extend NextApiRequest to include optional file
 interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;
 }
 
-// About row type
+// Type for About row
 interface AboutData {
   id: number;
   title: string;
@@ -20,16 +21,10 @@ interface AboutData {
   icon?: string;
 }
 
-// Type-safe multer adapter
-const multerMiddleware = (req: NextApiRequestWithFile, res: NextApiResponse, next: NextFunction) => {
-  const typedReq = req as unknown as Request;
-  const typedRes = res as unknown as Response;
-  upload.single("image")(typedReq, typedRes, next);
-};
-
 const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
 
-router.use(multerMiddleware);
+// Middleware for file upload
+router.use(upload.single("image"));
 
 // PUT /api/about/[id]
 router.put(async (req, res) => {
@@ -37,14 +32,16 @@ router.put(async (req, res) => {
   const { title, description, icon } = req.body;
 
   try {
-    const [existingRows] = await db.query<AboutData[]>(
+    // Fetch existing row
+    const [rows] = await db.query<RowDataPacket[]>(
       "SELECT image FROM about WHERE id = ?",
       [id]
     );
-    const existing = existingRows[0];
+    const existing = rows[0] as AboutData | undefined;
 
     let imagePath: string | null = existing?.image ?? null;
 
+    // Replace old image if a new file is uploaded
     if (req.file) {
       if (existing?.image) {
         const oldPath = path.join(process.cwd(), "public", existing.image);
@@ -70,14 +67,15 @@ router.delete(async (req, res) => {
   const { id } = req.query;
 
   try {
-    const [rows] = await db.query<AboutData[]>(
+    // Fetch existing row to delete image
+    const [rows] = await db.query<RowDataPacket[]>(
       "SELECT image FROM about WHERE id = ?",
       [id]
     );
-    const about = rows[0];
+    const existing = rows[0] as AboutData | undefined;
 
-    if (about?.image) {
-      const imgPath = path.join(process.cwd(), "public", about.image);
+    if (existing?.image) {
+      const imgPath = path.join(process.cwd(), "public", existing.image);
       if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
     }
 
@@ -91,7 +89,7 @@ router.delete(async (req, res) => {
 
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: false, // Required for file uploads
   },
 };
 
