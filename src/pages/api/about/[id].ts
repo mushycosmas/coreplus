@@ -1,4 +1,3 @@
-// src/pages/api/about/[id].ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createRouter } from "next-connect";
 import upload from "@/lib/middleware/upload";
@@ -7,12 +6,10 @@ import path from "path";
 import { db } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
-// Extend NextApiRequest to include optional file
 interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;
 }
 
-// Type for About row
 interface AboutData {
   id: number;
   title: string;
@@ -23,8 +20,11 @@ interface AboutData {
 
 const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
 
-// Middleware for file upload
-router.use(upload.single("image"));
+// Wrap multer for next-connect
+const multerMiddleware = upload.single("image");
+router.use((req, res, next) => {
+  multerMiddleware(req as any, res as any, next);
+});
 
 // PUT /api/about/[id]
 router.put(async (req, res) => {
@@ -32,7 +32,6 @@ router.put(async (req, res) => {
   const { title, description, icon } = req.body;
 
   try {
-    // Fetch existing row
     const [rows] = await db.query<RowDataPacket[]>(
       "SELECT image FROM about WHERE id = ?",
       [id]
@@ -41,7 +40,6 @@ router.put(async (req, res) => {
 
     let imagePath: string | null = existing?.image ?? null;
 
-    // Replace old image if a new file is uploaded
     if (req.file) {
       if (existing?.image) {
         const oldPath = path.join(process.cwd(), "public", existing.image);
@@ -67,7 +65,6 @@ router.delete(async (req, res) => {
   const { id } = req.query;
 
   try {
-    // Fetch existing row to delete image
     const [rows] = await db.query<RowDataPacket[]>(
       "SELECT image FROM about WHERE id = ?",
       [id]
@@ -89,7 +86,7 @@ router.delete(async (req, res) => {
 
 export const config = {
   api: {
-    bodyParser: false, // Required for file uploads
+    bodyParser: false,
   },
 };
 
