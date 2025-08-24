@@ -1,7 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/lib/db";
+import { RowDataPacket } from "mysql2";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+// Define WhyChooseUs type (row from DB)
+interface WhyChooseUs extends RowDataPacket {
+  id: number;
+  icon: string | null;
+  title: string;
+  description: string;
+  display_order: number;
+}
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<WhyChooseUs | { message: string } | null>
+) {
   const { id } = req.query;
 
   if (!id || Array.isArray(id)) {
@@ -10,8 +23,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     if (req.method === "GET") {
-      const [rows] = await db.query("SELECT * FROM why_choose_us WHERE id = ?", [id]);
-      return res.status(200).json((rows as any)[0] || null);
+      const [rows] = await db.query<WhyChooseUs[]>(
+        "SELECT * FROM why_choose_us WHERE id = ?",
+        [id]
+      );
+      return res.status(200).json(rows[0] || null);
     }
 
     if (req.method === "PUT") {
@@ -24,7 +40,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         [icon, title, description, display_order, id]
       );
 
-      return res.status(200).json({ id, icon, title, description, display_order });
+      return res.status(200).json({
+        id: Number(id),
+        icon: icon || null,
+        title,
+        description,
+        display_order,
+      });
     }
 
     if (req.method === "DELETE") {
@@ -33,8 +55,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     return res.status(405).json({ message: "Method not allowed" });
-  } catch (err) {
-    console.error("Why Choose Us [id] API Error:", err);
-    return res.status(500).json({ message: "Internal server error" });
+  } catch (error: unknown) {
+    console.error("Why Choose Us [id] API Error:", error);
+    return res.status(500).json({
+      message: error instanceof Error ? error.message : "Internal server error",
+    });
   }
 }

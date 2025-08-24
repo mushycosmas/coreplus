@@ -1,7 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/lib/db";
+import { RowDataPacket } from "mysql2";
 
-interface Service {
+// Define service type
+interface Service extends RowDataPacket {
   id: number;
   title: string;
   description: string;
@@ -21,7 +23,6 @@ export default async function handler(
       "SELECT id, title, description, image FROM services ORDER BY id DESC"
     );
 
-    // Log the query result for debugging
     console.log("Fetched services:", rows);
 
     if (!rows || rows.length === 0) {
@@ -29,8 +30,10 @@ export default async function handler(
     }
 
     res.status(200).json({ services: rows });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching services:", error);
-    res.status(500).json({ message: error.message || "Failed to fetch services" });
+    res.status(500).json({
+      message: error instanceof Error ? error.message : "Failed to fetch services",
+    });
   }
 }
