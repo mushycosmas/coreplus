@@ -6,15 +6,17 @@ import { FaEnvelope, FaPhoneAlt, FaMapMarkerAlt } from "react-icons/fa";
 import ReUseHeroSection from "../section/ReUseHeroSection";
 
 interface FormData {
-  name: string;
   email: string;
+  phone: string;
+  address: string;
   message: string;
 }
 
 const Contact: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
-    name: "",
     email: "",
+    phone: "",
+    address: "",
     message: "",
   });
 
@@ -29,22 +31,47 @@ const Contact: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.message) {
+
+    // Validation
+    if (!formData.email || !formData.phone || !formData.address || !formData.message) {
       setErrorMessage("All fields are required.");
       return;
     }
 
-    console.log("Form submitted:", formData);
-    setSuccessMessage("Your message has been sent successfully!");
+    // Reset previous messages
+    setErrorMessage(null);
+    setSuccessMessage(null);
 
+    try {
+      // Send form data to API
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setSuccessMessage("Your message has been sent successfully!");
+      } else {
+        setErrorMessage(data.message || "Something went wrong.");
+      }
+    } catch (error) {
+      setErrorMessage("An unexpected error occurred.");
+    }
+
+    // Clear form data
     setFormData({
-      name: "",
       email: "",
+      phone: "",
+      address: "",
       message: "",
     });
-    setErrorMessage(null);
   };
 
   return (
@@ -63,18 +90,6 @@ const Contact: React.FC = () => {
               {successMessage && <Alert variant="success">{successMessage}</Alert>}
 
               <Form onSubmit={handleSubmit}>
-                <Form.Group controlId="formName" className="mb-3">
-                  <Form.Label>Full Name:</Form.Label>
-                  <Form.Control
-                    type="text"
-                    placeholder="Enter your name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                  />
-                </Form.Group>
-
                 <Form.Group controlId="formEmail" className="mb-3">
                   <Form.Label>Email:</Form.Label>
                   <Form.Control
@@ -82,6 +97,30 @@ const Contact: React.FC = () => {
                     placeholder="Enter your email"
                     name="email"
                     value={formData.email}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+
+                <Form.Group controlId="formPhone" className="mb-3">
+                  <Form.Label>Phone:</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter your phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+
+                <Form.Group controlId="formAddress" className="mb-3">
+                  <Form.Label>Address:</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter your address"
+                    name="address"
+                    value={formData.address}
                     onChange={handleChange}
                     required
                   />
@@ -104,7 +143,7 @@ const Contact: React.FC = () => {
                   variant="primary"
                   type="submit"
                   className="w-100"
-                  disabled={!formData.name || !formData.email || !formData.message}
+                  disabled={!formData.email || !formData.phone || !formData.address || !formData.message}
                 >
                   Submit
                 </Button>
