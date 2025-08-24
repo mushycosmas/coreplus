@@ -2,8 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/lib/db";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 
-// Define the type of a WhyChooseUs item
-interface WhyChooseUsItem {
+// Extend RowDataPacket for SELECT results
+interface WhyChooseUsRow extends RowDataPacket {
   id: number;
   icon?: string | null;
   title: string;
@@ -11,12 +11,9 @@ interface WhyChooseUsItem {
   display_order?: number;
 }
 
-// Define response type
-type ResponseData = WhyChooseUsItem | { message: string };
-
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ResponseData>
+  res: NextApiResponse
 ) {
   const { id } = req.query;
 
@@ -26,16 +23,14 @@ export default async function handler(
 
   try {
     if (req.method === "GET") {
-      const [rows] = await db.query<WhyChooseUsItem[]>(
+      const [rows] = await db.query<WhyChooseUsRow[]>(
         "SELECT id, icon, title, description, display_order FROM why_choose_us WHERE id = ?",
         [id]
       );
 
       const item = rows[0];
 
-      if (!item) {
-        return res.status(404).json({ message: "Item not found" });
-      }
+      if (!item) return res.status(404).json({ message: "Item not found" });
 
       return res.status(200).json(item);
     }
