@@ -13,12 +13,12 @@ export const config = {
 };
 
 // Service type
-interface Service {
-  id?: number; // optional for POST
+interface Service extends RowDataPacket {
+  id: number;
   title: string;
   description: string;
   icon: string;
-  image?: string | null;
+  image: string | null;
 }
 
 // Parse form using formidable
@@ -40,12 +40,12 @@ async function parseForm(req: NextApiRequest): Promise<{ fields: formidable.Fiel
   });
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse<Service[] | Service | { message: string }>) {
   try {
     // GET /api/services
     if (req.method === "GET") {
-      const [rows] = await db.query<RowDataPacket[]>("SELECT * FROM services ORDER BY id DESC");
-      return res.status(200).json(rows as Service[]);
+      const [rows] = await db.query<Service[]>("SELECT * FROM services ORDER BY id DESC");
+      return res.status(200).json(rows);
     }
 
     // POST /api/services

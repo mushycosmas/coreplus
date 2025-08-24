@@ -1,131 +1,80 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/lib/db";
-import { createRouter } from "next-connect";
-import upload from "@/lib/middleware/upload";
 import fs from "fs";
 import path from "path";
 import { RowDataPacket } from "mysql2";
 
-interface NextApiRequestWithFile extends NextApiRequest {
-  file?: Express.Multer.File;
+interface ServiceRow extends RowDataPacket {
+  image?: string | null;
 }
 
-interface Service extends RowDataPacket {
-  id: number;
-  title: string;
-  description: string;
-  icon: string;
-  image: string | null;
-}
-
-const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
-
-// Middleware to handle file upload
-router.use(upload.single("image"));
-
-// PUT /api/services/[id]
-router.put(async (req, res) => {
-  const { id } = req.query;
-  const { title, description, icon } = req.body;
-
-  if (!id || Array.isArray(id) || !title || !description || !icon) {
-    return res
-      .status(400)
-      .json({ message: "Missing required fields (id, title, description, icon)" });
-  }
-
-  try {
-    // Get existing service
-    const [rows] = await db.query<Service[]>(
-      "SELECT image FROM services WHERE id = ?",
-      [id]
-    );
-    const service = rows[0];
-
-    if (!service) {
-      return res.status(404).json({ message: "Service not found" });
-    }
-
-    let imagePath = service.image;
-
-    if (req.file) {
-      // Delete old image if exists
-      if (imagePath) {
-        const fullPath = path.join(process.cwd(), "public", imagePath);
-        if (fs.existsSync(fullPath)) {
-          fs.unlinkSync(fullPath);
-        }
-      }
-      imagePath = `/uploads/${req.file.filename}`;
-    }
-
-    // Update DB
-    await db.query(
-      "UPDATE services SET title = ?, description = ?, icon = ?, image = ? WHERE id = ?",
-      [title, description, icon, imagePath, id]
-    );
-
-    res
-      .status(200)
-      .json({ id: Number(id), title, description, icon, image: imagePath });
-  } catch (error: unknown) {
-    console.error("Error updating service:", error);
-    res.status(500).json({
-      message: error instanceof Error ? error.message : "Failed to update service",
-    });
-  }
-});
-
-// DELETE /api/services/[id]
-router.delete(async (req, res) => {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
   if (!id || Array.isArray(id)) {
-    return res.status(400).json({ message: "Service ID is required" });
+    return res.status(400).json({ message: "Invalid or missing ID" });
   }
 
   try {
-    const [rows] = await db.query<Service[]>(
-      "SELECT image FROM services WHERE id = ?",
-      [id]
-    );
-    const service = rows[0];
+    if (req.method === "PUT") {
+      const { title, description, icon, image } = req.body;
 
-    if (!service) {
-      return res.status(404).json({ message: "Service not found" });
-    }
-
-    if (service.image) {
-      const fullPath = path.join(process.cwd(), "public", service.image);
-      if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
+      if (!title || !description || !icon) {
+        return res.status(400).json({ message: "Title, description, and icon are required" });
       }
+
+      // Get existing service
+      const [existingRows] = await db.query<ServiceRow[]>(
+        "SELECT image FROM services WHERE id = ?",
+        [id]
+      );
+      const existing = existingRows[0];
+
+      let imagePath = image || existing?.image || null;
+
+      // Delete old image if a new one is provided
+      if (image && existing?.image && existing.image !== image) {
+        const oldPath = path.join(process.cwd(), "public", existing.image);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+
+      // Update service in DB
+      await db.query(
+        "UPDATE services SET title = ?, description = ?, icon = ?, image = ? WHERE id = ?",
+        [title, description, icon, imagePath, id]
+      );
+
+      return res.status(200).json({ id: Number(id), title, description, icon, image: imagePath });
     }
 
-    await db.query("DELETE FROM services WHERE id = ?", [id]);
-    res.status(200).json({ message: "Service deleted successfully" });
-  } catch (error: unknown) {
-    console.error("Error deleting service:", error);
-    res.status(500).json({
-      message: error instanceof Error ? error.message : "Failed to delete service",
-    });
+    if (req.method === "DELETE") {
+      // Get existing service
+      const [existingRows] = await db.query<ServiceRow[]>(
+        "SELECT image FROM services WHERE id = ?",
+        [id]
+      );
+      const existing = existingRows[0];
+
+      if (!existing) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+
+      // Delete image if exists
+      if (existing.image) {
+        const oldPath = path.join(process.cwd(), "public", existing.image);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+
+      // Delete service from DB
+      await db.query("DELETE FROM services WHERE id = ?", [id]);
+
+      return res.status(200).json({ message: "Service deleted successfully" });
+    }
+
+    return res.status(405).json({ message: "Method not allowed" });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Server error";
+    console.error("Service [id] API error:", err);
+    return res.status(500).json({ message });
   }
-});
-
-export const config = {
-  api: {
-    bodyParser: false, // needed for file uploads
-  },
-};
-
-export default router.handler({
-  onError(error, req, res) {
-    console.error("API error:", error);
-    res.status(500).json({
-      message: error instanceof Error ? error.message : "Unexpected server error",
-    });
-  },
-  onNoMatch(req, res) {
-    res.status(405).json({ message: "Method not allowed" });
-  },
-});
+}
