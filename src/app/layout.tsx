@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     "Empowering businesses with innovative HR consulting solutions that drive growth and efficiency.",
   keywords:
     "HR consulting, business solutions, workforce strategies, CorePlus, business growth, efficiency",
-  author: "CorePlus Consulting Limited",
+  authors: [{ name: "CorePlus Consulting Limited" }], // ✅ fixed author
   robots: "index, follow",
   openGraph: {
     type: "website",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     description:
       "Empowering businesses with innovative HR consulting solutions that drive growth and efficiency.",
     url: "https://coreplus.co.tz",
-    siteName: "CorePlus Consulting",
+    siteName: "CorePlus Consulting", // ✅ fixed site_name -> siteName
     images: [
       {
         url: "/images/og-image.jpg",
@@ -48,12 +48,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: React.PropsWithChildren<object>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {children}
-      </body>
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>{children}</body>
     </html>
   );
 }
