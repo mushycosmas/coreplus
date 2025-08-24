@@ -1,7 +1,9 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import { Table, Button, Modal, Form } from "react-bootstrap";
-import Image from "next/image";  // Import Image from next/image
+import Image from "next/image";
 
 interface Client {
   id: number;
@@ -17,6 +19,7 @@ const ManageClients: React.FC = () => {
   const [name, setName] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
+  // Fetch clients from API
   const fetchClients = async () => {
     try {
       const res = await fetch("/api/clients");
@@ -35,7 +38,7 @@ const ManageClients: React.FC = () => {
     if (client) {
       setEditing(client);
       setName(client.name);
-      setLogoFile(null); // Reset file input
+      setLogoFile(null);
     } else {
       setEditing(null);
       setName("");
@@ -60,13 +63,9 @@ const ManageClients: React.FC = () => {
     const method = editing ? "PUT" : "POST";
 
     try {
-      const res = await fetch(url, {
-        method,
-        body: formData,
-      });
-      if (!res.ok) {
-        throw new Error("Failed to save");
-      }
+      const res = await fetch(url, { method, body: formData });
+      if (!res.ok) throw new Error("Failed to save client");
+
       setShowModal(false);
       fetchClients();
     } catch (err) {
@@ -103,40 +102,49 @@ const ManageClients: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {clients.map((client) => (
-            <tr key={client.id}>
-              <td>{client.id}</td>
-              <td>{client.name}</td>
-              <td>
-                {client.logo ? (
-                  // Replace <img> with <Image> component from next/image
-                  <Image
-                    src={client.logo}
-                    alt={client.name}
-                    width={100}  // Set your preferred width and height
-                    height={50}  // Set your preferred width and height
-                  />
-                ) : (
-                  "-"
-                )}
-              </td>
-              <td>{new Date(client.created_at).toLocaleString()}</td>
-              <td>
-                <Button variant="info" size="sm" className="me-2" onClick={() => openModal(client)}>
-                  Edit
-                </Button>
-                <Button variant="danger" size="sm" onClick={() => handleDelete(client.id)}>
-                  Delete
-                </Button>
-              </td>
-            </tr>
-          ))}
-          {clients.length === 0 && (
+          {clients.length === 0 ? (
             <tr>
               <td colSpan={5} className="text-center">
                 No clients found.
               </td>
             </tr>
+          ) : (
+            clients.map((client) => (
+              <tr key={client.id}>
+                <td>{client.id}</td>
+                <td>{client.name}</td>
+                <td>
+                  {client.logo ? (
+                    <Image
+                      src={client.logo}
+                      alt={client.name}
+                      width={100}
+                      height={50}
+                    />
+                  ) : (
+                    "-"
+                  )}
+                </td>
+                <td>{new Date(client.created_at).toLocaleString()}</td>
+                <td>
+                  <Button
+                    variant="info"
+                    size="sm"
+                    className="me-2"
+                    onClick={() => openModal(client)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => handleDelete(client.id)}
+                  >
+                    Delete
+                  </Button>
+                </td>
+              </tr>
+            ))
           )}
         </tbody>
       </Table>
@@ -163,11 +171,9 @@ const ManageClients: React.FC = () => {
                 type="file"
                 accept="image/*"
                 onChange={(e) => {
-                  if (e.target.files?.[0]) {
-                    setLogoFile(e.target.files[0]);
-                  } else {
-                    setLogoFile(null);
-                  }
+                  const target = e.target as HTMLInputElement;
+                  if (target.files?.[0]) setLogoFile(target.files[0]);
+                  else setLogoFile(null);
                 }}
               />
               <Form.Text className="text-muted">
