@@ -1,47 +1,60 @@
+// src/pages/api/about/index.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/lib/db";
 import { createRouter } from "next-connect";
 import upload from "@/lib/middleware/upload";
+import { FileFilterCallback } from "multer";
 
+// Extend NextApiRequest to include optional `file`
 interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;
 }
 
+// Type for About row
+interface AboutData {
+  id?: number;
+  title: string;
+  description: string;
+  image?: string | null;
+  icon?: string;
+}
+
 const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
 
-// Wrap multer middleware for Next.js/Next-connect
+// Wrap multer middleware for next-connect
 router.use((req, res, next) => {
-  upload.single("image")(req as any, res as any, next);
+  upload.single("image")(req as unknown as Express.Request, res as unknown as Express.Response, next);
 });
 
 // GET /api/about
 router.get(async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM about ORDER BY id DESC");
+    const [rows] = (await db.query("SELECT * FROM about ORDER BY id DESC")) as AboutData[][];
 
-    if ((rows as any).length === 0) {
+    if (!rows || rows.length === 0) {
       return res.status(404).json({ message: "No about data found" });
     }
 
     res.status(200).json(rows);
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to fetch about items";
-    res.status(500).json({ message: errorMessage });
+    const message = error instanceof Error ? error.message : "Failed to fetch about items";
+    res.status(500).json({ message });
   }
 });
 
 // POST /api/about
 router.post(async (req, res) => {
-  const { title, description, icon } = req.body;
-  const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
-
   try {
-    const [result] = await db.query(
+    const body = req.body as { title: string; description: string; icon?: string };
+    const { title, description, icon } = body;
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
+
+    const [result] = (await db.query(
       "INSERT INTO about (title, description, image, icon) VALUES (?, ?, ?, ?)",
       [title, description, imagePath, icon]
-    );
+    )) as { insertId: number }[];
 
-    const insertId = (result as { insertId: number }).insertId;
+    const insertId = result.insertId;
 
     res.status(201).json({
       id: insertId,
@@ -51,14 +64,14 @@ router.post(async (req, res) => {
       icon,
     });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to create about";
-    res.status(500).json({ message: errorMessage });
+    const message = error instanceof Error ? error.message : "Failed to create about";
+    res.status(500).json({ message });
   }
 });
 
 export const config = {
   api: {
-    bodyParser: false, // For file uploads
+    bodyParser: false, // Required for file uploads
   },
 };
 
