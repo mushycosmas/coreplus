@@ -1,113 +1,83 @@
+// src/pages/api/about/[id].ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { db } from "@/lib/db";
-import { createRouter } from "next-connect";
 import multer, { FileFilterCallback } from "multer";
-import fs from "fs";
 import path from "path";
+import fs from "fs";
+import { db } from "@/lib/db";
 
+// Extend NextApiRequest to include `file`
 interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;
 }
 
-interface AboutRow {
-  image: string | null;
-}
-
 // Multer storage
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(process.cwd(), "public/uploads/about");
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
+  destination: path.join(process.cwd(), "public/uploads"),
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}_${file.originalname}`);
+    cb(null, Date.now() + path.extname(file.originalname));
   },
 });
 
-// Multer instance (use `any` only here for the request)
+// Multer upload with typed fileFilter
 const upload = multer({
   storage,
-  fileFilter: (req: any, file: Express.Multer.File, cb: FileFilterCallback) => {
+  fileFilter: (req: unknown, file: Express.Multer.File, cb: FileFilterCallback) => {
     if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Only image files are allowed"));
+      cb(new Error("Only image files are allowed"));
+    } else {
+      cb(null, true);
     }
-    cb(null, true);
   },
-});
-
-const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
-
-// Type-safe Multer middleware wrapper
-const multerMiddleware = upload.single("image");
-router.use((req: NextApiRequestWithFile, res: NextApiResponse, next) => {
-  multerMiddleware(req, res, (err?: unknown) => {
-    if (err instanceof Error) return res.status(400).json({ message: err.message });
-    next();
-  });
-});
-
-// PUT /api/about/[id]
-router.put(async (req, res) => {
-  const { id } = req.query;
-  const { title, description, icon } = req.body;
-
-  try {
-    const [existing] = await db.query("SELECT image FROM about WHERE id = ?", [id]);
-    const existingItem = (existing as AboutRow[])[0];
-
-    let imagePath = existingItem?.image || null;
-
-    if (req.file) {
-      if (existingItem?.image) {
-        const oldPath = path.join(process.cwd(), "public", existingItem.image);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-      imagePath = `/uploads/about/${req.file.filename}`;
-    }
-
-    await db.query(
-      "UPDATE about SET title = ?, description = ?, image = ?, icon = ? WHERE id = ?",
-      [title, description, imagePath, icon, id]
-    );
-
-    res.status(200).json({ id, title, description, image: imagePath, icon });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Update failed";
-    res.status(500).json({ message });
-  }
-});
-
-// DELETE /api/about/[id]
-router.delete(async (req, res) => {
-  const { id } = req.query;
-
-  try {
-    const [rows] = await db.query("SELECT image FROM about WHERE id = ?", [id]);
-    const about = (rows as AboutRow[])[0];
-
-    if (about?.image) {
-      const imgPath = path.join(process.cwd(), "public", about.image);
-      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-    }
-
-    await db.query("DELETE FROM about WHERE id = ?", [id]);
-    res.status(200).json({ message: "Deleted successfully" });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Deletion failed";
-    res.status(500).json({ message });
-  }
 });
 
 export const config = {
-  api: { bodyParser: false },
+  api: {
+    bodyParser: false,
+  },
 };
 
-export default router.handler({
-  onError(error, req, res) {
-    res.status(500).json({ message: error instanceof Error ? error.message : "Internal error" });
-  },
-  onNoMatch(req, res) {
+// Handler
+export default async function handler(
+  req: NextApiRequestWithFile,
+  res: NextApiResponse
+) {
+  if (req.method === "PUT") {
+    try {
+      // Handle file if uploaded
+      let imagePath: string | null = null;
+      if (req.file) {
+        imagePath = `/uploads/${req.file.filename}`;
+      }
+
+      const { id } = req.query;
+      const { title, description, icon } = req.body;
+
+      await db.query(
+        "UPDATE about SET title=?, description=?, icon=?, image=? WHERE id=?",
+        [title, description, icon, imagePath, id]
+      );
+
+      res.status(200).json({ message: "Updated successfully" });
+    } catch (err) {
+      res.status(500).json({ message: (err as Error).message });
+    }
+  } else if (req.method === "DELETE") {
+    try {
+      const { id } = req.query;
+      const [rows] = await db.query("SELECT image FROM about WHERE id=?", [id]);
+      const about = (rows as { image: string }[])[0];
+
+      if (about?.image) {
+        const imgPath = path.join(process.cwd(), "public", about.image);
+        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+      }
+
+      await db.query("DELETE FROM about WHERE id=?", [id]);
+      res.status(200).json({ message: "Deleted successfully" });
+    } catch (err) {
+      res.status(500).json({ message: (err as Error).message });
+    }
+  } else {
     res.status(405).json({ message: "Method not allowed" });
-  },
-});
+  }
+}
