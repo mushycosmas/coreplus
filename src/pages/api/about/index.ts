@@ -1,9 +1,9 @@
-// src/pages/api/about/index.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import formidable, { File } from "formidable";
 import fs from "fs";
 import path from "path";
 import { db } from "@/lib/db";
+import { RowDataPacket } from "mysql2";
 
 export const config = {
   api: {
@@ -14,9 +14,7 @@ export const config = {
 // Wrap formidable parse in a promise
 function parseForm(req: NextApiRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> {
   const uploadDir = path.join(process.cwd(), "public/uploads");
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
   const form = formidable({
     multiples: false,
@@ -32,9 +30,9 @@ function parseForm(req: NextApiRequest): Promise<{ fields: formidable.Fields; fi
   });
 }
 
-// Type for About data
-interface AboutData {
-  id?: number;
+// Type for About row, extending RowDataPacket for mysql2 compatibility
+interface AboutData extends RowDataPacket {
+  id: number;
   title: string;
   description: string;
   image?: string | null;
@@ -46,9 +44,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // GET /api/about
     if (req.method === "GET") {
       const [rows] = await db.query<AboutData[]>("SELECT * FROM about ORDER BY id DESC");
+
       if (!rows || rows.length === 0) {
         return res.status(404).json({ message: "No about data found" });
       }
+
       return res.status(200).json(rows);
     }
 
@@ -60,20 +60,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const description = Array.isArray(fields.description) ? fields.description[0] : fields.description;
       const icon = Array.isArray(fields.icon) ? fields.icon[0] : fields.icon;
 
-      // Handle uploaded image
       const uploadedFile = files.image as File | undefined;
       const imagePath = uploadedFile ? `/uploads/${path.basename(uploadedFile.filepath)}` : null;
 
       // Insert into DB
-      const [result] = await db.query<{ insertId: number }>(
-        "INSERT INTO about (title, description, image, icon) VALUES (?, ?, ?, ?)",
-        [title, description, imagePath, icon || null]
-      );
-
-      const insertId = (result as { insertId: number }).insertId;
+      const [result] = await db.query<{
+        insertId: number;
+      }>("INSERT INTO about (title, description, image, icon) VALUES (?, ?, ?, ?)", [
+        title,
+        description,
+        imagePath,
+        icon || null,
+      ]);
 
       return res.status(201).json({
-        id: insertId,
+        id: (result as { insertId: number }).insertId,
         title,
         description,
         image: imagePath,
