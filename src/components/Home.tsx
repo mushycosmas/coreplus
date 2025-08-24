@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import HeroSection from "./section/heroSection";
 import { Container, Row, Col, Card, Button, Spinner } from "react-bootstrap";
-import { FaCogs, FaUsers, FaHandshake, FaRocket, FaLightbulb } from "react-icons/fa";
+import { FaRocket } from "react-icons/fa";
 
 // Define types for the data that we will fetch
 interface Service {

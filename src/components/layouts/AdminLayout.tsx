@@ -2,7 +2,7 @@
 
 import React, { ReactNode } from "react";
 import { Container, Navbar, Nav, Button } from "react-bootstrap";
-import { FaUserCircle, FaCheckCircle,FaHome,FaImage, FaInfoCircle, FaServicestack,FaBullseye, FaEnvelope, FaBriefcase, FaStar } from "react-icons/fa";
+import { FaUserCircle, FaCheckCircle,FaHome,FaImage, FaInfoCircle, FaServicestack,FaBullseye, FaEnvelope, FaStar } from "react-icons/fa";
 
 interface AdminLayoutProps {
   children: ReactNode;

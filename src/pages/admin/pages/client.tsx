@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import { Table, Button, Modal, Form } from "react-bootstrap";
+import Image from "next/image";  // Import Image from next/image
 
 interface Client {
   id: number;
@@ -34,7 +35,7 @@ const ManageClients: React.FC = () => {
     if (client) {
       setEditing(client);
       setName(client.name);
-      setLogoFile(null); // Reset file input, can't prefill for security reasons
+      setLogoFile(null); // Reset file input
     } else {
       setEditing(null);
       setName("");
@@ -108,7 +109,13 @@ const ManageClients: React.FC = () => {
               <td>{client.name}</td>
               <td>
                 {client.logo ? (
-                  <img src={client.logo} alt={client.name} style={{ height: 50 }} />
+                  // Replace <img> with <Image> component from next/image
+                  <Image
+                    src={client.logo}
+                    alt={client.name}
+                    width={100}  // Set your preferred width and height
+                    height={50}  // Set your preferred width and height
+                  />
                 ) : (
                   "-"
                 )}
