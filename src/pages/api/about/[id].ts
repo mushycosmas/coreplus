@@ -1,17 +1,17 @@
-// src/pages/api/about/[id].ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/lib/db";
 import { createRouter } from "next-connect";
 import upload from "@/lib/middleware/upload";
 import fs from "fs";
 import path from "path";
+import { Request, Response, NextFunction } from "express";
 
-// Extend NextApiRequest to include optional uploaded file
+// Extend NextApiRequest to include optional file
 interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;
 }
 
-// Type for About row
+// About row type
 interface AboutData {
   id: number;
   title: string;
@@ -20,17 +20,15 @@ interface AboutData {
   icon?: string;
 }
 
-// Create router
+// Type-safe multer adapter
+const multerMiddleware = (req: NextApiRequestWithFile, res: NextApiResponse, next: NextFunction) => {
+  const typedReq = req as unknown as Request;
+  const typedRes = res as unknown as Response;
+  upload.single("image")(typedReq, typedRes, next);
+};
+
 const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
 
-// Wrap multer middleware for next-connect
-const multerMiddleware = (
-  req: NextApiRequestWithFile,
-  res: NextApiResponse,
-  next: (err?: any) => void
-) => {
-  upload.single("image")(req as any, res as any, next);
-};
 router.use(multerMiddleware);
 
 // PUT /api/about/[id]
@@ -39,16 +37,14 @@ router.put(async (req, res) => {
   const { title, description, icon } = req.body;
 
   try {
-    // Fetch existing image
     const [existingRows] = await db.query<AboutData[]>(
       "SELECT image FROM about WHERE id = ?",
       [id]
     );
     const existing = existingRows[0];
 
-    let imagePath = existing?.image ?? null;
+    let imagePath: string | null = existing?.image ?? null;
 
-    // Replace old image if new file uploaded
     if (req.file) {
       if (existing?.image) {
         const oldPath = path.join(process.cwd(), "public", existing.image);
@@ -80,7 +76,6 @@ router.delete(async (req, res) => {
     );
     const about = rows[0];
 
-    // Delete image from filesystem if exists
     if (about?.image) {
       const imgPath = path.join(process.cwd(), "public", about.image);
       if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
@@ -96,7 +91,7 @@ router.delete(async (req, res) => {
 
 export const config = {
   api: {
-    bodyParser: false, // Required for file uploads
+    bodyParser: false,
   },
 };
 
