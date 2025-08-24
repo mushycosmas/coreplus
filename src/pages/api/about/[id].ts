@@ -20,11 +20,20 @@ interface AboutData {
 
 const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
 
-// Wrap multer for next-connect
-const multerMiddleware = upload.single("image");
-router.use((req, res, next) => {
-  multerMiddleware(req as any, res as any, next);
-});
+// Type-safe multer wrapper
+const multerWrapper = (
+  req: NextApiRequestWithFile,
+  res: NextApiResponse,
+  next: () => void
+) => {
+  upload.single("image")(
+    req as unknown as Express.Request,
+    res as unknown as Express.Response,
+    next
+  );
+};
+
+router.use(multerWrapper);
 
 // PUT /api/about/[id]
 router.put(async (req, res) => {
@@ -38,15 +47,15 @@ router.put(async (req, res) => {
     );
     const existing = rows[0] as AboutData | undefined;
 
-    let imagePath: string | null = existing?.image ?? null;
-
-    if (req.file) {
-      if (existing?.image) {
-        const oldPath = path.join(process.cwd(), "public", existing.image);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-      imagePath = `/uploads/${req.file.filename}`;
-    }
+    const imagePath: string | null = req.file
+      ? (() => {
+          if (existing?.image) {
+            const oldPath = path.join(process.cwd(), "public", existing.image);
+            if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+          }
+          return `/uploads/${req.file.filename}`;
+        })()
+      : existing?.image ?? null;
 
     await db.query(
       "UPDATE about SET title = ?, description = ?, icon = ?, image = ? WHERE id = ?",
