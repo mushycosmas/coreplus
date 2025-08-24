@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-// Font imports
+// Font import
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     description:
       "Empowering businesses with innovative HR consulting solutions that drive growth and efficiency.",
     url: "https://coreplus.co.tz",
-    siteName: "CorePlus Consulting", // ✅ Correct property name
+    siteName: "CorePlus Consulting",
     images: [
       {
         url: "/images/og-image.jpg",
@@ -44,10 +44,9 @@ export const metadata: Metadata = {
     title: "CorePlus Consulting Limited",
     description:
       "Empowering businesses with innovative HR consulting solutions that drive growth and efficiency.",
-    image: "/images/twitter-image.jpg",
+    images: ["/images/twitter-image.jpg"], // ✅ must be an array
   },
 };
-
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
