@@ -6,7 +6,7 @@ import upload from "@/lib/middleware/upload";
 import fs from "fs";
 import path from "path";
 
-// Extend NextApiRequest to include optional file
+// Extend NextApiRequest to include optional uploaded file
 interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;
 }
@@ -20,10 +20,18 @@ interface AboutData {
   icon?: string;
 }
 
+// Create router
 const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
 
-// Middleware for file upload
-router.use(upload.single("image"));
+// Wrap multer middleware for next-connect
+const multerMiddleware = (
+  req: NextApiRequestWithFile,
+  res: NextApiResponse,
+  next: (err?: any) => void
+) => {
+  upload.single("image")(req as any, res as any, next);
+};
+router.use(multerMiddleware);
 
 // PUT /api/about/[id]
 router.put(async (req, res) => {
@@ -31,6 +39,7 @@ router.put(async (req, res) => {
   const { title, description, icon } = req.body;
 
   try {
+    // Fetch existing image
     const [existingRows] = await db.query<AboutData[]>(
       "SELECT image FROM about WHERE id = ?",
       [id]
@@ -71,6 +80,7 @@ router.delete(async (req, res) => {
     );
     const about = rows[0];
 
+    // Delete image from filesystem if exists
     if (about?.image) {
       const imgPath = path.join(process.cwd(), "public", about.image);
       if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
@@ -86,7 +96,7 @@ router.delete(async (req, res) => {
 
 export const config = {
   api: {
-    bodyParser: false, // disable body parser for file uploads
+    bodyParser: false, // Required for file uploads
   },
 };
 
