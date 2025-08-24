@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/lib/db";
-import { ResultSetHeader } from "mysql2";
+import { RowDataPacket, ResultSetHeader } from "mysql2";
 
-// Define WhyChooseUs type
-interface WhyChooseUs {
+// Row type for SELECT queries
+interface WhyChooseUsRow extends RowDataPacket {
   id: number;
   icon: string | null;
   title: string;
@@ -11,21 +11,32 @@ interface WhyChooseUs {
   display_order: number;
 }
 
-// Response type
-type ResponseData = WhyChooseUs[] | { id: number; icon: string | null; title: string; description: string; display_order: number } | { message: string };
+// Type for POST response
+interface WhyChooseUsPostResponse {
+  id: number;
+  icon: string | null;
+  title: string;
+  description: string;
+  display_order: number;
+}
+
+// Unified response type
+type ResponseData = WhyChooseUsRow[] | WhyChooseUsPostResponse | { message: string };
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ResponseData>
 ) {
   try {
+    // GET /api/why-choose-us
     if (req.method === "GET") {
-      const [rows] = await db.query<WhyChooseUs[]>(
+      const [rows] = await db.query<WhyChooseUsRow[]>(
         "SELECT * FROM why_choose_us ORDER BY display_order ASC, id ASC"
       );
       return res.status(200).json(rows);
     }
 
+    // POST /api/why-choose-us
     if (req.method === "POST") {
       const { icon, title, description, display_order } = req.body;
 
