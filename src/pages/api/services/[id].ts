@@ -16,6 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // PUT /api/services/[id]
     if (req.method === "PUT") {
       const { title, description, icon, image } = req.body;
 
@@ -23,17 +24,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ message: "Title, description, and icon are required" });
       }
 
-      // Get existing service
+      // Fetch existing service
       const [existingRows] = await db.query<ServiceRow[]>(
         "SELECT image FROM services WHERE id = ?",
         [id]
       );
       const existing = existingRows[0];
 
-      let imagePath = image || existing?.image || null;
+      if (!existing) {
+        return res.status(404).json({ message: "Service not found" });
+      }
 
-      // Delete old image if a new one is provided
-      if (image && existing?.image && existing.image !== image) {
+      // Determine image path
+      const imagePath = image || existing.image || null;
+
+      // Delete old image if replaced
+      if (image && existing.image && existing.image !== image) {
         const oldPath = path.join(process.cwd(), "public", existing.image);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
@@ -44,11 +50,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         [title, description, icon, imagePath, id]
       );
 
-      return res.status(200).json({ id: Number(id), title, description, icon, image: imagePath });
+      return res.status(200).json({
+        id: Number(id),
+        title,
+        description,
+        icon,
+        image: imagePath,
+      });
     }
 
+    // DELETE /api/services/[id]
     if (req.method === "DELETE") {
-      // Get existing service
+      // Fetch existing service
       const [existingRows] = await db.query<ServiceRow[]>(
         "SELECT image FROM services WHERE id = ?",
         [id]
@@ -65,14 +78,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
 
-      // Delete service from DB
+      // Delete service
       await db.query("DELETE FROM services WHERE id = ?", [id]);
 
       return res.status(200).json({ message: "Service deleted successfully" });
     }
 
     return res.status(405).json({ message: "Method not allowed" });
-  } catch (err) {
+  } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Server error";
     console.error("Service [id] API error:", err);
     return res.status(500).json({ message });
