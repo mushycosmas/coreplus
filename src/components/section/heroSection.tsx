@@ -11,17 +11,17 @@ interface HeroImage {
 
 const images: HeroImage[] = [
   {
-    url: "https://emphires-demo.pbminfotech.com/html-demo/images/service/service-01.jpg",
+    url: "/hero/service-01.jpg",
     title: "Elevate Your Business",
     tagline: "Transform your business with strategic HR solutions.",
   },
   {
-    url: "https://emphires-demo.pbminfotech.com/html-demo/images/service/service-02.jpg",
+    url: "/hero/service-02.jpg",
     title: "Empower Your Team",
     tagline: "Build stronger teams through effective HR management.",
   },
   {
-    url: "https://emphires-demo.pbminfotech.com/html-demo/images/service/service-03.jpg",
+    url: "/hero/service-03.jpg",
     title: "Optimize Performance",
     tagline: "Maximize employee performance with innovative solutions.",
   },
