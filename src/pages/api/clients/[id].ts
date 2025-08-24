@@ -9,7 +9,7 @@ interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;
 }
 
-// Multer setup
+// Multer storage & filter
 const storage = multer.diskStorage({
   destination: path.join(process.cwd(), "public/uploads"),
   filename: (_, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
@@ -23,14 +23,10 @@ const upload = multer({
 });
 
 // Helper to run multer in Next.js API
-function runMiddleware(req: NextApiRequestWithFile, res: NextApiResponse) {
-  return new Promise<void>((resolve, reject) => {
-    upload.single("image")(req, res, (err) => {
-      if (err) reject(err);
-      else resolve();
-    });
+const runMiddleware = (req: NextApiRequestWithFile, res: NextApiResponse) =>
+  new Promise<void>((resolve, reject) => {
+    upload.single("image")(req, res, (err) => (err ? reject(err) : resolve()));
   });
-}
 
 export const config = {
   api: {
@@ -38,25 +34,29 @@ export const config = {
   },
 };
 
+// Handler
 export default async function handler(req: NextApiRequestWithFile, res: NextApiResponse) {
   const { id } = req.query;
 
   try {
-    // Run multer middleware for file upload
     if (req.method === "PUT") {
       await runMiddleware(req, res);
 
-      const { title, description, icon } = req.body;
+      const { title, description, icon } = req.body as {
+        title: string;
+        description: string;
+        icon?: string;
+      };
 
-      const [existingRows] = await db.query(
+      const [existingRows] = await db.query<{ image?: string }[]>(
         "SELECT image FROM about WHERE id = ?",
         [id]
       );
-      const existing = (existingRows as { image?: string }[])[0];
+      const existing = existingRows[0];
 
       const imagePath = req.file ? `/uploads/${req.file.filename}` : existing?.image ?? null;
 
-      // Delete old file if replaced
+      // Delete old image if replaced
       if (req.file && existing?.image) {
         const oldPath = path.join(process.cwd(), "public", existing.image);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
@@ -71,8 +71,8 @@ export default async function handler(req: NextApiRequestWithFile, res: NextApiR
     }
 
     if (req.method === "DELETE") {
-      const [rows] = await db.query("SELECT image FROM about WHERE id = ?", [id]);
-      const about = (rows as { image?: string }[])[0];
+      const [rows] = await db.query<{ image?: string }[]>("SELECT image FROM about WHERE id = ?", [id]);
+      const about = rows[0];
 
       if (about?.image) {
         const imgPath = path.join(process.cwd(), "public", about.image);
