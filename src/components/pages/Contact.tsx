@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, ChangeEvent, FormEvent } from "react";
+import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { Container, Row, Col, Form, Button, Card, Alert } from "react-bootstrap";
 import { FaEnvelope, FaPhoneAlt, FaMapMarkerAlt } from "react-icons/fa";
 import ReUseHeroSection from "../section/ReUseHeroSection";
@@ -12,6 +12,12 @@ interface FormData {
   message: string;
 }
 
+interface ContactInfo {
+  email: string;
+  phone: string;
+  address: string;
+}
+
 const Contact: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     email: "",
@@ -20,8 +26,27 @@ const Contact: React.FC = () => {
     message: "",
   });
 
+  const [contact, setContact] = useState<ContactInfo | null>(null);
+  const [loadingContact, setLoadingContact] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Fetch Contact Info from API
+  const fetchContact = async () => {
+    try {
+      const res = await fetch("/api/contact-info/contact");
+      const data: ContactInfo = await res.json();
+      setContact(data);
+    } catch (err) {
+      console.error("Failed to fetch contact info:", err);
+    } finally {
+      setLoadingContact(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContact();
+  }, []);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -30,8 +55,6 @@ const Contact: React.FC = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-
-    // Validation
     if (!formData.email || !formData.phone || !formData.address || !formData.message) {
       setErrorMessage("All fields are required.");
       setSuccessMessage(null);
@@ -141,15 +164,23 @@ const Contact: React.FC = () => {
           {/* Contact Info */}
           <Col md={4} lg={3} className="mt-4 mt-md-0">
             <h4>Contact Information</h4>
-            <div className="contact-item d-flex align-items-center mb-3">
-              <FaEnvelope className="me-2" size={20} /> support@example.com
-            </div>
-            <div className="contact-item d-flex align-items-center mb-3">
-              <FaPhoneAlt className="me-2" size={20} /> +123 456 7890
-            </div>
-            <div className="contact-item d-flex align-items-center mb-3">
-              <FaMapMarkerAlt className="me-2" size={20} /> 123 Main Street, Dar es Salaam, Tanzania
-            </div>
+            {loadingContact ? (
+              <p>Loading contact info...</p>
+            ) : contact ? (
+              <>
+                <div className="contact-item d-flex align-items-center mb-3">
+                  <FaEnvelope className="me-2" size={20} /> {contact.email}
+                </div>
+                <div className="contact-item d-flex align-items-center mb-3">
+                  <FaPhoneAlt className="me-2" size={20} /> {contact.phone}
+                </div>
+                <div className="contact-item d-flex align-items-center mb-3">
+                  <FaMapMarkerAlt className="me-2" size={20} /> {contact.address}
+                </div>
+              </>
+            ) : (
+              <p>Contact info not available.</p>
+            )}
 
             {/* Google Map */}
             <div className="my-4">

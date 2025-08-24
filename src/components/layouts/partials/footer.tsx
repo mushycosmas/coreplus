@@ -1,10 +1,62 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Container, Row, Col } from "react-bootstrap";
 import Link from "next/link";
 
+interface ContactInfo {
+  email: string;
+  phone: string;
+  address: string;
+}
+
+interface About {
+  description: string;
+}
+
+const navItems = [
+  { name: "Home", path: "/" },
+  { name: "About Us", path: "/about" },
+  { name: "Services", path: "/services" },
+  { name: "Values", path: "/values" },
+  { name: "Jobs", path: "/jobs" },
+  { name: "Contact Us", path: "/contact-us" },
+];
+
 const Footer = () => {
+  const [contact, setContact] = useState<ContactInfo | null>(null);
+  const [abouts, setAbouts] = useState<About[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch Contact Info
+  const fetchContact = async () => {
+    try {
+      const res = await fetch("/api/contact-info/contact");
+      const data: ContactInfo = await res.json();
+      setContact(data);
+    } catch (err) {
+      console.error("Failed to fetch contact info:", err);
+    }
+  };
+
+  // Fetch About Info
+  const fetchAbouts = async () => {
+    try {
+      const res = await fetch("/api/about");
+      const data: About[] = await res.json();
+      setAbouts(data);
+    } catch (err) {
+      console.error("Failed to fetch abouts:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContact();
+    fetchAbouts();
+  }, []);
+
   // Styles
   const footerStyle: React.CSSProperties = {
     backgroundColor: "#276795",
@@ -13,49 +65,57 @@ const Footer = () => {
     textAlign: "center",
   };
 
-  const linkStyle: React.CSSProperties = {
-    color: "#f8f9fa",
-    textDecoration: "none",
-    margin: "0 10px",
-    transition: "all 0.3s ease-in-out",
-    padding: "5px 10px",
-    borderRadius: "5px",
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    display: "inline-block",
-  };
-
   return (
     <footer style={footerStyle} className="mt-auto">
       <Container fluid>
         <Row>
+          {/* About Section */}
           <Col md={4}>
             <h5>About CorePlus</h5>
-            <p>
-              CorePlus Consulting Limited provides expert consulting solutions,
-              helping businesses thrive with innovative strategies.
-            </p>
+            {loading ? (
+              <p>Loading about info...</p>
+            ) : abouts.length > 0 ? (
+              <>
+                <p>
+                  {abouts[0].description.length > 120
+                    ? `${abouts[0].description.substring(0, 120)}...`
+                    : abouts[0].description}
+                </p>
+                <Link href="/about" className="learn-more">
+                  Learn More →
+                </Link>
+              </>
+            ) : (
+              <p>No about info available</p>
+            )}
           </Col>
 
+          {/* Quick Links */}
           <Col md={4}>
             <h5>Quick Links</h5>
-            <div>
-              <Link href="/" style={linkStyle} className="footer-link">
-                Home
-              </Link>
-              <Link href="/service" style={linkStyle} className="footer-link">
-                Services
-              </Link>
-              <Link href="/contact" style={linkStyle} className="footer-link">
-                Contact Us
-              </Link>
-            </div>
+            <Row className="mt-2">
+              {navItems.map((item) => (
+                <Col xs="auto" key={item.path}>
+                  <Link href={item.path} className="footer-link">
+                    {item.name}
+                  </Link>
+                </Col>
+              ))}
+            </Row>
           </Col>
 
+          {/* Contact Section */}
           <Col md={4}>
             <h5>Contact Us</h5>
-            <p>Email: contact@coreplus.co.tz</p>
-            <p>Phone: +255 123 456 789</p>
-            <p>Location: Dar es Salaam, Tanzania</p>
+            {contact ? (
+              <>
+                <p>Email: {contact.email}</p>
+                <p>Phone: {contact.phone}</p>
+                <p>Location: {contact.address}</p>
+              </>
+            ) : (
+              <p>Loading contact info...</p>
+            )}
           </Col>
         </Row>
 
@@ -67,9 +127,49 @@ const Footer = () => {
       </Container>
 
       <style jsx>{`
+        .footer-link {
+          display: inline-block;
+          padding: 6px 12px;
+          margin: 4px;
+          border-radius: 5px;
+          background-color: rgba(255, 255, 255, 0.1);
+          color: #f8f9fa;
+          text-decoration: none;
+          transition: all 0.3s ease;
+          position: relative;
+          font-weight: 500;
+        }
+
+        .footer-link::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          bottom: -2px;
+          width: 0;
+          height: 2px;
+          background-color: #ffc107;
+          transition: width 0.3s ease;
+        }
+
         .footer-link:hover {
-          color: #17a2b8 !important;
-          background-color: rgba(255, 255, 255, 0.2) !important;
+          color: #ffc107;
+          background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .footer-link:hover::after {
+          width: 100%;
+        }
+
+        .learn-more {
+          color: #ffc107;
+          text-decoration: none;
+          margin-top: 10px;
+          display: inline-block;
+          transition: color 0.3s ease;
+        }
+
+        .learn-more:hover {
+          color: #ffffff;
         }
       `}</style>
     </footer>
