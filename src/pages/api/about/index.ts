@@ -1,3 +1,4 @@
+// src/pages/api/about/index.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import formidable, { File } from "formidable";
 import fs from "fs";
@@ -6,7 +7,7 @@ import { db } from "@/lib/db";
 
 export const config = {
   api: {
-    bodyParser: false, // disable Next.js body parser for file uploads
+    bodyParser: false, // Disable Next.js body parser for file uploads
   },
 };
 
@@ -31,16 +32,27 @@ function parseForm(req: NextApiRequest): Promise<{ fields: formidable.Fields; fi
   });
 }
 
+// Type for About data
+interface AboutData {
+  id?: number;
+  title: string;
+  description: string;
+  image?: string | null;
+  icon?: string | null;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    // GET /api/about
     if (req.method === "GET") {
-      const [rows] = await db.query("SELECT * FROM about ORDER BY id DESC");
-      if (!rows || (rows as any[]).length === 0) {
+      const [rows] = await db.query<AboutData[]>("SELECT * FROM about ORDER BY id DESC");
+      if (!rows || rows.length === 0) {
         return res.status(404).json({ message: "No about data found" });
       }
       return res.status(200).json(rows);
     }
 
+    // POST /api/about
     if (req.method === "POST") {
       const { fields, files } = await parseForm(req);
 
@@ -48,16 +60,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const description = Array.isArray(fields.description) ? fields.description[0] : fields.description;
       const icon = Array.isArray(fields.icon) ? fields.icon[0] : fields.icon;
 
+      // Handle uploaded image
       const uploadedFile = files.image as File | undefined;
       const imagePath = uploadedFile ? `/uploads/${path.basename(uploadedFile.filepath)}` : null;
 
+      // Insert into DB
       const [result] = await db.query<{ insertId: number }>(
         "INSERT INTO about (title, description, image, icon) VALUES (?, ?, ?, ?)",
         [title, description, imagePath, icon || null]
       );
 
+      const insertId = (result as { insertId: number }).insertId;
+
       return res.status(201).json({
-        id: (result as any).insertId,
+        id: insertId,
         title,
         description,
         image: imagePath,
@@ -66,7 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     return res.status(405).json({ message: "Method not allowed" });
-  } catch (err: unknown) {
+  } catch (err) {
     const message = err instanceof Error ? err.message : "Server error";
     return res.status(500).json({ message });
   }
