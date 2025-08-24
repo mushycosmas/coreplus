@@ -1,30 +1,32 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
-// Define the type for client data
 interface ClientData {
   id: number;
   name: string;
-  logo?: string;
+  logo?: string | null;
   created_at: string;
 }
 
-// Route to fetch clients with an optional limit parameter
 const getClients = async (req: NextApiRequest, res: NextApiResponse) => {
   const { limit = '12' } = req.query;
   const limitNumber = parseInt(limit as string, 10);
   const finalLimit = isNaN(limitNumber) ? 12 : limitNumber;
 
   try {
-    const [rows] = await db.query<ClientData[]>(
+    // Use RowDataPacket[] for typing, then cast to ClientData[]
+    const [rows] = await db.query<RowDataPacket[]>(
       'SELECT * FROM clients ORDER BY created_at DESC LIMIT ?',
       [finalLimit]
     );
 
-    res.status(200).json({ clients: rows });
+    const clients = rows as ClientData[];
+
+    res.status(200).json({ clients });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch clients';
-    res.status(500).json({ message: errorMessage });
+    const message = error instanceof Error ? error.message : 'Failed to fetch clients';
+    res.status(500).json({ message });
   }
 };
 
