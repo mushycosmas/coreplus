@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Container, Row, Col, Card, Pagination, Form, Button, Badge } from "react-bootstrap";
-import ReUseHeroSection from "../Section/ReUseHeroSection";
+import ReUseHeroSection from "../section/ReUseHeroSection";
 import { FaBuilding, FaClock, FaMapMarkerAlt, FaBriefcase, FaCalendarAlt, FaSearch } from "react-icons/fa";
 
 // Define types for the jobs
