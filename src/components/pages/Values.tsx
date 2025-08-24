@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import ReUseHeroSection from "../section/ReUseHeroSection";
 import { Container, Row, Col, Card, Spinner, Alert } from "react-bootstrap";
-import * as FaIcons from "react-icons/fa"; // Import all icons
+import * as FaIcons from "react-icons/fa";
 
 interface CoreValue {
   title: string;
@@ -23,15 +23,13 @@ const Values: React.FC = () => {
         if (!response.ok) throw new Error("Failed to fetch core values.");
 
         const data = await response.json();
-
         if (Array.isArray(data.coreValues)) {
           setCoreValues(data.coreValues);
         } else {
           setError("Unexpected data format for core values.");
         }
       } catch {
-        // eslint-disable-next-line no-console
-        setError("Error loading core values."); // 'err' removed, warning fixed
+        setError("Error loading core values."); // no unused variable now
       } finally {
         setLoading(false);
       }
@@ -40,7 +38,6 @@ const Values: React.FC = () => {
     fetchCoreValues();
   }, []);
 
-  // Dynamically get icon component
   const getIcon = (iconName: string) => {
     const IconComponent = FaIcons[iconName as keyof typeof FaIcons];
     return IconComponent ? <IconComponent size={40} className="text-primary" /> : null;

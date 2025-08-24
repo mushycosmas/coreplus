@@ -20,8 +20,8 @@ interface WhyChooseUsItem {
 const Services: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [whyChooseUs, setWhyChooseUs] = useState<WhyChooseUsItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadingServices, setLoadingServices] = useState<boolean>(true);
+  const [errorServices, setErrorServices] = useState<string | null>(null);
   const [loadingWhyChooseUs, setLoadingWhyChooseUs] = useState<boolean>(true);
   const [errorWhyChooseUs, setErrorWhyChooseUs] = useState<string | null>(null);
 
@@ -30,41 +30,39 @@ const Services: React.FC = () => {
     const fetchServices = async () => {
       try {
         const response = await fetch("/api/services/services");
-        if (!response.ok) {
-          throw new Error("Failed to fetch services.");
-        }
+        if (!response.ok) throw new Error("Failed to fetch services.");
+
         const data = await response.json();
-        if (data.services && Array.isArray(data.services)) {
+        if (Array.isArray(data.services)) {
           setServices(data.services);
         } else {
-          setError("Unexpected data format for services.");
+          setErrorServices("Unexpected data format for services.");
         }
-      } catch (err) {
-        setError("Error loading services.");
+      } catch {
+        setErrorServices("Error loading services.");
       } finally {
-        setLoading(false);
+        setLoadingServices(false);
       }
     };
 
     fetchServices();
   }, []);
 
-  // Fetch Why Choose Us data
+  // Fetch 'Why Choose Us' data
   useEffect(() => {
     const fetchWhyChooseUs = async () => {
       try {
         const response = await fetch("/api/why-choose-us/why_choose_us?limit=1");
-        if (!response.ok) {
-          throw new Error("Failed to fetch 'Why Choose Us' data.");
-        }
+        if (!response.ok) throw new Error("Failed to fetch Why Choose Us data.");
+
         const data = await response.json();
-        if (data.items && Array.isArray(data.items)) {
+        if (Array.isArray(data.items)) {
           setWhyChooseUs(data.items);
         } else {
-          setErrorWhyChooseUs("Unexpected data format for 'Why Choose Us'.");
+          setErrorWhyChooseUs("Unexpected data format for Why Choose Us.");
         }
-      } catch (err) {
-        setErrorWhyChooseUs("Error loading 'Why Choose Us' data.");
+      } catch {
+        setErrorWhyChooseUs("Error loading Why Choose Us data.");
       } finally {
         setLoadingWhyChooseUs(false);
       }
@@ -88,7 +86,7 @@ const Services: React.FC = () => {
           </Col>
         </Row>
 
-        {loading && (
+        {loadingServices && (
           <Row>
             <Col className="text-center">
               <Spinner animation="border" variant="primary" />
@@ -97,38 +95,41 @@ const Services: React.FC = () => {
           </Row>
         )}
 
-        {error && (
+        {errorServices && (
           <Row>
             <Col className="text-center">
-              <Alert variant="danger">{error}</Alert>
+              <Alert variant="danger">{errorServices}</Alert>
             </Col>
           </Row>
         )}
 
-        <Row>
-          {services.map((service) => (
-            <Col md={4} key={service.id}>
-              <Card className="mb-4">
-                <Card.Img
-                  variant="top"
-                  src={service.image}
-                  alt={service.title}
-                />
-                <Card.Body>
-                  <Card.Title>{service.title}</Card.Title>
-                  <Card.Text>{service.description}</Card.Text>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
+        {!loadingServices && !errorServices && (
+          <Row>
+            {services.map((service) => (
+              <Col md={4} key={service.id}>
+                <Card className="mb-4 shadow-sm">
+                  <Card.Img
+                    variant="top"
+                    src={service.image}
+                    alt={service.title}
+                    style={{ height: "200px", objectFit: "cover" }}
+                  />
+                  <Card.Body>
+                    <Card.Title>{service.title}</Card.Title>
+                    <Card.Text>{service.description.replace(/'/g, "&apos;")}</Card.Text>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        )}
 
         {/* Why Choose Us Section */}
         {loadingWhyChooseUs ? (
           <Row>
             <Col className="text-center">
               <Spinner animation="border" variant="primary" />
-              <p>Loading 'Why Choose Us'...</p>
+              <p>Loading Why Choose Us...</p>
             </Col>
           </Row>
         ) : errorWhyChooseUs ? (
@@ -142,8 +143,8 @@ const Services: React.FC = () => {
             <Row className="mt-5">
               <Col>
                 <h2>Why Choose Us?</h2>
-                <h3>{whyChooseUs[0].title}</h3>
-                <p>{whyChooseUs[0].description}</p>
+                <h3>{whyChooseUs[0].title.replace(/'/g, "&apos;")}</h3>
+                <p>{whyChooseUs[0].description.replace(/'/g, "&apos;")}</p>
               </Col>
             </Row>
           )
