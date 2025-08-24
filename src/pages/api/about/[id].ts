@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createRouter } from "next-connect";
 import multer from "multer";
-import path from "path";
 import fs from "fs";
+import path from "path";
 import { db } from "@/lib/db";
 
 // Extend NextApiRequest to include optional file
@@ -15,6 +15,7 @@ const storage = multer.diskStorage({
   destination: path.join(process.cwd(), "public/uploads"),
   filename: (_, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
 });
+
 const upload = multer({
   storage,
   fileFilter: (_, file, cb: multer.FileFilterCallback) => {
@@ -23,36 +24,26 @@ const upload = multer({
   },
 });
 
-// Type for About row
-interface AboutData {
-  id: number;
-  title: string;
-  description: string;
-  image?: string | null;
-  icon?: string;
-}
+// Adapter for Next-connect to satisfy TypeScript
+const uploadMiddleware = (req: NextApiRequestWithFile, res: NextApiResponse, next: () => void) => {
+  // Here we cast to Express.Request/Response only internally
+  upload.single("image")(req as unknown as Express.Request, res as unknown as Express.Response, next);
+};
 
-// Create router
+// Router
 const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
 
-// Use multer middleware via next-connect
-router.use(upload.single("image"));
+router.use(uploadMiddleware);
 
 // PUT /api/about/:id
 router.put(async (req, res) => {
   const { id } = req.query;
-
   try {
     const { title, description, icon } = req.body as { title: string; description: string; icon?: string };
 
-    // Get existing image
-    const [existingRows] = await db.query<{ image?: string }[]>(
-      "SELECT image FROM about WHERE id = ?",
-      [id]
-    );
+    const [existingRows] = await db.query<{ image?: string }[]>("SELECT image FROM about WHERE id = ?", [id]);
     const existing = existingRows[0];
 
-    // Determine new image path
     let imagePath = existing?.image ?? null;
     if (req.file) {
       if (existing?.image) {
@@ -62,7 +53,6 @@ router.put(async (req, res) => {
       imagePath = `/uploads/${req.file.filename}`;
     }
 
-    // Update DB
     await db.query(
       "UPDATE about SET title = ?, description = ?, icon = ?, image = ? WHERE id = ?",
       [title, description, icon, imagePath, id]
@@ -98,7 +88,7 @@ router.delete(async (req, res) => {
 
 export const config = {
   api: {
-    bodyParser: false, // required for multer
+    bodyParser: false,
   },
 };
 
