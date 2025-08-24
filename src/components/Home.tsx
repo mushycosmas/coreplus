@@ -102,7 +102,7 @@ const Home: React.FC = () => {
 
       {/* About Us Section */}
       <Container className="my-5 text-center">
-        <h2 className="section-title">{aboutUs?.title || "About Us"}</h2>
+          <h2 className="section-title">About Us</h2>
         <Row className="justify-content-center align-items-center">
           <Col md={6} className="mb-4 mb-md-0">
             <p className="about-text">{aboutUs?.description || "Loading..."}</p>
