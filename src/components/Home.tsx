@@ -1,11 +1,100 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import HeroSection from "./section/heroSection";
-import { Container, Row, Col, Card, Button } from "react-bootstrap";
+import { Container, Row, Col, Card, Button, Spinner } from "react-bootstrap";
 import { FaCogs, FaUsers, FaHandshake, FaRocket, FaLightbulb } from "react-icons/fa";
-import ReUseHeroSection from "../section/ReUseHeroSection";
+
+// Define types for the data that we will fetch
+interface Service {
+  id: number;
+  title: string;
+  description: string;
+  image: string;
+}
+
+interface WhyChooseUs {
+  id: number;
+  title: string;
+  description: string;
+}
+
+interface AboutUs {
+  title: string;
+  description: string;
+  image: string;
+}
+
+interface Client {
+  id: number;
+  name: string;
+  logo: string;
+}
+
 const Home: React.FC = () => {
+  const [aboutUs, setAboutUs] = useState<AboutUs | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [whyChooseUs, setWhyChooseUs] = useState<WhyChooseUs[]>([]);
+  const [clients, setClients] = useState<Client[]>([]); // State for clients
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch data from APIs
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch "About Us" data
+        const aboutResponse = await fetch("/api/about/about");
+        if (!aboutResponse.ok) throw new Error("Failed to fetch About Us.");
+        const aboutData = await aboutResponse.json();
+        setAboutUs(aboutData);
+
+        // Fetch services data
+        const servicesResponse = await fetch("/api/services/services");
+        if (!servicesResponse.ok) throw new Error("Failed to fetch Services.");
+        const servicesData = await servicesResponse.json();
+        setServices(servicesData.services);
+
+        // Fetch "Why Choose Us" data
+        const whyChooseResponse = await fetch("/api/why-choose-us/why_choose_us?limit=4");
+        if (!whyChooseResponse.ok) throw new Error("Failed to fetch Why Choose Us.");
+        const whyChooseData = await whyChooseResponse.json();
+        setWhyChooseUs(whyChooseData.items);
+
+        // Fetch "Clients" data
+        const clientsResponse = await fetch("/api/clients/clients?limit=12");
+        if (!clientsResponse.ok) throw new Error("Failed to fetch Clients.");
+        const clientsData = await clientsResponse.json();
+        setClients(clientsData.clients);
+
+      } catch (err) {
+        setError("Error loading data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Loading and Error handling
+  if (loading) {
+    return (
+      <Container className="text-center my-5">
+        <Spinner animation="border" variant="primary" />
+        <p>Loading...</p>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container className="text-center my-5">
+        <p>{error}</p>
+      </Container>
+    );
+  }
+
   return (
     <>
       {/* Hero Section */}
@@ -13,84 +102,84 @@ const Home: React.FC = () => {
 
       {/* About Us Section */}
       <Container className="my-5 text-center">
-        <h2 className="section-title">About Us</h2>
+        <h2 className="section-title">{aboutUs?.title || "About Us"}</h2>
         <Row className="justify-content-center align-items-center">
           <Col md={6} className="mb-4 mb-md-0">
-            <p className="about-text">
-              At <strong>CorePlus Consulting Limited</strong>, we specialize in delivering cutting-edge HR consulting solutions. 
-              Our mission is to empower businesses with workforce strategies that drive growth and efficiency.
-            </p>
+            <p className="about-text">{aboutUs?.description || "Loading..."}</p>
             <Button variant="primary">Learn More</Button>
           </Col>
           <Col md={6}>
-            <img src="/images/about-us.svg" alt="About Us" className="img-fluid about-img" />
+            <img
+              src={aboutUs?.image || "/images/about-us.svg"}
+              alt="About Us"
+              className="img-fluid about-img"
+            />
           </Col>
         </Row>
       </Container>
 
-      {/* Our Services */}
+      {/* Our Services Section */}
       <Container className="my-5 text-center">
         <h2 className="section-title">Our Services</h2>
         <Row className="justify-content-center">
-          <Col md={4} className="mb-4">
-            <Card className="p-4 shadow-sm service-card h-100 text-center">
-              <FaCogs size={40} className="service-icon text-primary mb-3" />
-              <h4>Talent Acquisition</h4>
-              <p>We provide top-tier recruitment solutions to meet your hiring needs.</p>
-              <Button variant="link" href="/services">View More Services</Button>
-            </Card>
-          </Col>
-          <Col md={4} className="mb-4">
-            <Card className="p-4 shadow-sm service-card h-100 text-center">
-              <FaUsers size={40} className="service-icon text-success mb-3" />
-              <h4>HR Outsourcing</h4>
-              <p>Optimize HR operations by outsourcing administrative functions.</p>
-              <Button variant="link" href="/services">View More Services</Button>
-            </Card>
-          </Col>
-          <Col md={4} className="mb-4">
-            <Card className="p-4 shadow-sm service-card h-100 text-center">
-              <FaHandshake size={40} className="service-icon text-warning mb-3" />
-              <h4>Training & Development</h4>
-              <p>Enhance workforce skills with our tailored training programs.</p>
-              <Button variant="link" href="/services">View More Services</Button>
-            </Card>
-          </Col>
+          {services.length > 0 ? (
+            services.map((service) => (
+              <Col md={4} className="mb-4" key={service.id}>
+                <Card className="p-4 shadow-sm service-card h-100 text-center">
+                  {service.image && <Card.Img variant="top" src={service.image} alt={service.title} />}
+                  <Card.Body>
+                    <Card.Title>{service.title}</Card.Title>
+                    <Card.Text>{service.description}</Card.Text>
+                    <Button variant="link" href="/services">View More Services</Button>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))
+          ) : (
+            <p>No services available</p>
+          )}
         </Row>
       </Container>
 
-      {/* Why Choose Us */}
+      {/* Why Choose Us Section */}
       <Container className="my-5 text-center">
         <h2 className="section-title">Why Choose Us?</h2>
         <Row className="justify-content-center">
-          <Col md={4} className="mb-4">
-            <Card className="p-4 shadow-sm feature-card h-100 text-center">
-              <FaRocket size={40} className="feature-icon text-danger mb-3" />
-              <h4>Innovation</h4>
-              <p>We use modern strategies to provide effective HR solutions.</p>
-            </Card>
-          </Col>
-          <Col md={4} className="mb-4">
-            <Card className="p-4 shadow-sm feature-card h-100 text-center">
-              <FaLightbulb size={40} className="feature-icon text-info mb-3" />
-              <h4>Expertise</h4>
-              <p>Our team consists of highly skilled HR professionals.</p>
-            </Card>
-          </Col>
+          {whyChooseUs.length > 0 ? (
+            whyChooseUs.map((item) => (
+              <Col md={4} className="mb-4" key={item.id}>
+                <Card className="p-4 shadow-sm feature-card h-100 text-center">
+                  <FaRocket size={40} className="feature-icon text-danger mb-3" />
+                  <h4>{item.title}</h4>
+                  <p>{item.description}</p>
+                </Card>
+              </Col>
+            ))
+          ) : (
+            <p>No data available</p>
+          )}
         </Row>
       </Container>
 
-      {/* Our Clients */}
+      {/* Our Clients Section */}
       <Container className="my-5 text-center">
         <h2 className="section-title">Our Clients</h2>
         <Row className="justify-content-center">
-          {[1, 2, 3, 4, 5, 6].map((client) => (
-            <Col md={4} sm={6} xs={12} key={client} className="mb-4 text-center">
-              <div className="client-circle mx-auto mb-2">
-                <img src={`/images/client${client}.png`} alt={`Client ${client}`} className="client-logo img-fluid" />
-              </div>
-            </Col>
-          ))}
+          {clients.length > 0 ? (
+            clients.map((client) => (
+              <Col md={4} sm={6} xs={12} key={client.id} className="mb-4 text-center">
+                <div className="client-circle mx-auto mb-2">
+                  <img
+                    src={client.logo || "/images/default-client.png"}
+                    alt={`Client ${client.name}`}
+                    className="client-logo img-fluid"
+                  />
+                </div>
+              </Col>
+            ))
+          ) : (
+            <p>No clients available</p>
+          )}
         </Row>
       </Container>
 

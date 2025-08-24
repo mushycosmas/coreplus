@@ -16,25 +16,23 @@ interface About {
 const ManageAbout: React.FC = () => {
   const [abouts, setAbouts] = useState<About[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-
-  // Modal states
   const [showModal, setShowModal] = useState<boolean>(false);
   const [editingAbout, setEditingAbout] = useState<About | null>(null);
-  const [formData, setFormData] = useState<About>({
+  const [formData, setFormData] = useState<Partial<About>>({
     title: "",
     description: "",
-    image: "",
     icon: "FaInfoCircle",
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const fetchAbouts = async () => {
     try {
       const res = await fetch("/api/about");
       const data = await res.json();
       setAbouts(data);
-      setLoading(false);
     } catch (error) {
       console.error(error);
+    } finally {
       setLoading(false);
     }
   };
@@ -47,9 +45,11 @@ const ManageAbout: React.FC = () => {
     if (about) {
       setEditingAbout(about);
       setFormData({ ...about });
+      setImageFile(null); // Reset file input
     } else {
       setEditingAbout(null);
-      setFormData({ title: "", description: "", image: "", icon: "FaInfoCircle" });
+      setFormData({ title: "", description: "", icon: "FaInfoCircle" });
+      setImageFile(null);
     }
     setShowModal(true);
   };
@@ -57,24 +57,37 @@ const ManageAbout: React.FC = () => {
   const handleCloseModal = () => setShowModal(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setImageFile(file);
   };
 
   const handleSubmit = async () => {
-    if (!formData.title || !formData.description) return alert("Title and description are required!");
+    if (!formData.title || !formData.description) {
+      alert("Title and description are required!");
+      return;
+    }
+
+    const form = new FormData();
+    form.append("title", formData.title);
+    form.append("description", formData.description);
+    form.append("icon", formData.icon || "");
+    if (imageFile) form.append("image", imageFile);
 
     try {
       if (editingAbout) {
         await fetch(`/api/about/${editingAbout.id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: form,
         });
       } else {
         await fetch("/api/about", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: form,
         });
       }
       fetchAbouts();
@@ -153,17 +166,22 @@ const ManageAbout: React.FC = () => {
           <Form>
             <Form.Group className="mb-3">
               <Form.Label>Title</Form.Label>
-              <Form.Control type="text" name="title" value={formData.title} onChange={handleChange} />
+              <Form.Control type="text" name="title" value={formData.title || ""} onChange={handleChange} />
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label>Description</Form.Label>
-              <Form.Control as="textarea" rows={3} name="description" value={formData.description} onChange={handleChange} />
+              <Form.Control as="textarea" rows={3} name="description" value={formData.description || ""} onChange={handleChange} />
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Image URL</Form.Label>
-              <Form.Control type="text" name="image" value={formData.image} onChange={handleChange} />
+              <Form.Label>Image</Form.Label>
+              <Form.Control type="file" accept="image/*" onChange={handleImageChange} />
+              {formData.image && (
+                <div className="mt-2">
+                  <img src={formData.image} alt="Preview" width={80} />
+                </div>
+              )}
             </Form.Group>
 
             <Form.Group className="mb-3">
