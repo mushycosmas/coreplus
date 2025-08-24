@@ -1,108 +1,90 @@
 // src/pages/api/about/[id].ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { db } from "@/lib/db";
-import { createRouter } from "next-connect";
-import multer, { FileFilterCallback } from "multer";
+import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { db } from "@/lib/db";
 
-// Extend NextApiRequest to include `file`
+// Extend NextApiRequest to include optional file
 interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;
 }
 
-// Multer storage setup
+// Multer setup
 const storage = multer.diskStorage({
   destination: path.join(process.cwd(), "public/uploads"),
-  filename: (_, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
+  filename: (_, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
 });
-
-// Typed fileFilter
 const upload = multer({
   storage,
-  fileFilter: (_req: unknown, file: Express.Multer.File, cb: FileFilterCallback) => {
-    if (!file.mimetype.startsWith("image/")) {
-      cb(new Error("Only image files are allowed"));
-    } else {
-      cb(null, true);
-    }
+  fileFilter: (_, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) cb(new Error("Only images allowed"));
+    else cb(null, true);
   },
 });
 
-// Wrap multer for next-connect
-const multerMiddleware = upload.single("image");
-
-// Create router
-const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
-
-router.use(multerMiddleware);
-
-// PUT /api/about/:id
-router.put(async (req, res) => {
-  const { id } = req.query;
-  const { title, description, icon } = req.body;
-
-  try {
-    // Fetch existing image
-    const [rows] = await db.query("SELECT image FROM about WHERE id = ?", [id]);
-    const existing = (rows as { image: string }[])[0];
-
-    let imagePath = existing?.image || null;
-
-    if (req.file) {
-      // Delete old image if exists
-      if (existing?.image) {
-        const oldPath = path.join(process.cwd(), "public", existing.image);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-      imagePath = `/uploads/${req.file.filename}`;
-    }
-
-    await db.query(
-      "UPDATE about SET title=?, description=?, icon=?, image=? WHERE id=?",
-      [title, description, icon, imagePath, id]
-    );
-
-    res.status(200).json({ message: "Updated successfully", image: imagePath });
-  } catch (err) {
-    res.status(500).json({ message: (err as Error).message });
-  }
-});
-
-// DELETE /api/about/:id
-router.delete(async (req, res) => {
-  const { id } = req.query;
-
-  try {
-    const [rows] = await db.query("SELECT image FROM about WHERE id=?", [id]);
-    const about = (rows as { image: string }[])[0];
-
-    if (about?.image) {
-      const imgPath = path.join(process.cwd(), "public", about.image);
-      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-    }
-
-    await db.query("DELETE FROM about WHERE id=?", [id]);
-    res.status(200).json({ message: "Deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ message: (err as Error).message });
-  }
-});
+// Adapter to wrap multer middleware for Next.js
+const multerMiddleware = (req: NextApiRequestWithFile, res: NextApiResponse, next: () => void) => {
+  return upload.single("image")(req as unknown as Express.Request, res as unknown as Express.Response, next);
+};
 
 export const config = {
   api: {
-    bodyParser: false, // Disable Next.js body parser for multer
+    bodyParser: false, // required for file uploads
   },
 };
 
-export default router.handler({
-  onError(error, _req, res) {
-    const msg = error instanceof Error ? error.message : "Internal server error";
-    res.status(500).json({ message: msg });
-  },
-  onNoMatch(_req, res) {
+export default async function handler(req: NextApiRequestWithFile, res: NextApiResponse) {
+  await new Promise<void>((resolve, reject) => {
+    multerMiddleware(req, res, (err?: unknown) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+
+  const { id } = req.query;
+
+  if (req.method === "PUT") {
+    try {
+      const { title, description, icon } = req.body;
+      let imagePath: string | null = req.file ? `/uploads/${req.file.filename}` : null;
+
+      const [existingRows] = await db.query("SELECT image FROM about WHERE id=?", [id]);
+      const existing = (existingRows as { image?: string }[])[0];
+
+      // Delete old image if replaced
+      if (existing?.image && imagePath) {
+        const oldPath = path.join(process.cwd(), "public", existing.image);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+
+      await db.query(
+        "UPDATE about SET title=?, description=?, icon=?, image=? WHERE id=?",
+        [title, description, icon, imagePath ?? existing?.image ?? null, id]
+      );
+
+      res.status(200).json({ message: "Updated successfully" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Update failed";
+      res.status(500).json({ message });
+    }
+  } else if (req.method === "DELETE") {
+    try {
+      const [rows] = await db.query("SELECT image FROM about WHERE id=?", [id]);
+      const about = (rows as { image?: string }[])[0];
+
+      if (about?.image) {
+        const imgPath = path.join(process.cwd(), "public", about.image);
+        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+      }
+
+      await db.query("DELETE FROM about WHERE id=?", [id]);
+      res.status(200).json({ message: "Deleted successfully" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Deletion failed";
+      res.status(500).json({ message });
+    }
+  } else {
     res.status(405).json({ message: "Method not allowed" });
-  },
-});
+  }
+}

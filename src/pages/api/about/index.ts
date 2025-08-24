@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/lib/db";
 import { createRouter } from "next-connect";
 import upload from "@/lib/middleware/upload";
-import { FileFilterCallback } from "multer";
 
 // Extend NextApiRequest to include optional `file`
 interface NextApiRequestWithFile extends NextApiRequest {
@@ -16,7 +15,7 @@ interface AboutData {
   title: string;
   description: string;
   image?: string | null;
-  icon?: string;
+  icon?: string | null;
 }
 
 const router = createRouter<NextApiRequestWithFile, NextApiResponse>();
@@ -29,7 +28,7 @@ router.use((req, res, next) => {
 // GET /api/about
 router.get(async (req, res) => {
   try {
-    const [rows] = (await db.query("SELECT * FROM about ORDER BY id DESC")) as AboutData[][];
+    const [rows] = await db.query<AboutData[]>("SELECT * FROM about ORDER BY id DESC");
 
     if (!rows || rows.length === 0) {
       return res.status(404).json({ message: "No about data found" });
@@ -49,19 +48,17 @@ router.post(async (req, res) => {
     const { title, description, icon } = body;
     const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
 
-    const [result] = (await db.query(
+    const [result] = await db.query<{ insertId: number }>(
       "INSERT INTO about (title, description, image, icon) VALUES (?, ?, ?, ?)",
-      [title, description, imagePath, icon]
-    )) as { insertId: number }[];
-
-    const insertId = result.insertId;
+      [title, description, imagePath, icon || null]
+    );
 
     res.status(201).json({
-      id: insertId,
+      id: result.insertId,
       title,
       description,
       image: imagePath,
-      icon,
+      icon: icon || null,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to create about";
