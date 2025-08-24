@@ -5,14 +5,17 @@ import { ResultSetHeader, RowDataPacket } from "mysql2";
 // Define Value type (row from DB)
 interface Value extends RowDataPacket {
   id: number;
-  title: string;
+  title: string;   
   description: string;
   icon: string | null;
 }
 
+// Response types
+type ResponseData = Value[] | { id: number; title: string; description: string; icon: string | null } | { message: string };
+
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<Value[] | Value | { message: string }>
+  res: NextApiResponse<ResponseData>
 ) {
   try {
     if (req.method === "GET") {
@@ -34,6 +37,7 @@ export default async function handler(
         [title, description, icon || null]
       );
 
+      // Plain object for POST response
       return res.status(201).json({
         id: result.insertId,
         title,

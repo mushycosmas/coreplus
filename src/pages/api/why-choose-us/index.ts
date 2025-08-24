@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/lib/db";
-import { ResultSetHeader, RowDataPacket } from "mysql2";
+import { ResultSetHeader } from "mysql2";
 
-// Define WhyChooseUs type (row from DB)
-interface WhyChooseUs extends RowDataPacket {
+// Define WhyChooseUs type
+interface WhyChooseUs {
   id: number;
   icon: string | null;
   title: string;
@@ -11,9 +11,12 @@ interface WhyChooseUs extends RowDataPacket {
   display_order: number;
 }
 
+// Response type
+type ResponseData = WhyChooseUs[] | { id: number; icon: string | null; title: string; description: string; display_order: number } | { message: string };
+
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WhyChooseUs[] | WhyChooseUs | { message: string }>
+  res: NextApiResponse<ResponseData>
 ) {
   try {
     if (req.method === "GET") {
