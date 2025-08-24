@@ -3,8 +3,6 @@ import { db } from "@/lib/db";
 import { createRouter } from "next-connect";
 import upload from "@/lib/middleware/upload";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
-import path from "path";
-import fs from "fs";
 
 interface NextApiRequestWithFile extends NextApiRequest {
   file?: Express.Multer.File;

@@ -2,45 +2,57 @@
 
 import React, { useState, useEffect } from "react";
 import ReUseHeroSection from "../section/ReUseHeroSection";
-import { Container, Row, Col, Card, Image, Spinner, Alert } from "react-bootstrap";
+import { Container, Row, Col, Card, Spinner, Alert } from "react-bootstrap";
+import Image from "next/image";
+
+// Define types for API data
+interface AboutData {
+  title: string;
+  description: string;
+  image?: string;
+}
+
+interface Service {
+  id: number;
+  title: string;
+  description: string;
+  image?: string;
+}
+
+interface WhyChooseUs {
+  id: number;
+  title: string;
+  description: string;
+}
 
 const About: React.FC = () => {
-  const [aboutData, setAboutData] = useState<any>(null);
-  const [services, setServices] = useState<any[]>([]);
-  const [whyChooseUs, setWhyChooseUs] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [aboutData, setAboutData] = useState<AboutData | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [whyChooseUs, setWhyChooseUs] = useState<WhyChooseUs[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch data for About, Services, and Why Choose Us
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Fetch About data
-        const aboutResponse = await fetch("/api/about/about");
-        if (!aboutResponse.ok) {
-          throw new Error("Failed to fetch About data.");
-        }
-        const aboutData = await aboutResponse.json();
+        const aboutRes = await fetch("/api/about/about");
+        if (!aboutRes.ok) throw new Error("Failed to fetch About data.");
+        const aboutJson = await aboutRes.json();
+        setAboutData(aboutJson);
 
         // Fetch Services data
-        const servicesResponse = await fetch("/api/services/services");
-        if (!servicesResponse.ok) {
-          throw new Error("Failed to fetch Services.");
-        }
-        const servicesData = await servicesResponse.json();
+        const servicesRes = await fetch("/api/services/services");
+        if (!servicesRes.ok) throw new Error("Failed to fetch Services.");
+        const servicesJson = await servicesRes.json();
+        setServices(servicesJson.services || []);
 
-        // Fetch Why Choose Us data with a limit of 4
-        const whyChooseUsResponse = await fetch("/api/why-choose-us/why_choose_us?limit=4");
-        if (!whyChooseUsResponse.ok) {
-          throw new Error("Failed to fetch 'Why Choose Us' data.");
-        }
-        const whyChooseUsData = await whyChooseUsResponse.json();
-
-        // Set the fetched data to state
-        setAboutData(aboutData);
-        setServices(servicesData.services);
-        setWhyChooseUs(whyChooseUsData.items || []);
-      } catch (err) {
+        // Fetch Why Choose Us data
+        const whyRes = await fetch("/api/why-choose-us/why_choose_us?limit=4");
+        if (!whyRes.ok) throw new Error("Failed to fetch 'Why Choose Us'.");
+        const whyJson = await whyRes.json();
+        setWhyChooseUs(whyJson.items || []);
+      } catch {
         setError("Error loading data.");
       } finally {
         setLoading(false);
@@ -50,48 +62,48 @@ const About: React.FC = () => {
     fetchData();
   }, []);
 
-  // Handle case when data is still loading or if there is an error
-  if (loading) {
+  if (loading)
     return (
       <div className="text-center mt-5">
         <Spinner animation="border" variant="primary" />
         <p>Loading...</p>
       </div>
     );
-  }
 
-  if (error) {
+  if (error)
     return (
       <div className="text-center mt-5">
         <Alert variant="danger">{error}</Alert>
       </div>
     );
-  }
 
-  // Ensure aboutData exists before trying to access its properties
-  if (!aboutData || !aboutData.title) {
+  if (!aboutData)
     return (
       <div className="text-center mt-5">
         <Alert variant="danger">About data is missing or invalid.</Alert>
       </div>
     );
-  }
 
   return (
     <>
-      {/* Hero Section */}
       <ReUseHeroSection title="About Us" tagline="Your Trusted HR Solutions Partner" />
 
-      {/* About Content */}
       <Container className="my-5">
         <Row className="align-items-center">
           <Col md={6}>
-             <h2 className="section-title">About Us</h2>
+            <h2 className="section-title">{aboutData.title}</h2>
             <p>{aboutData.description}</p>
           </Col>
           <Col md={6}>
             {aboutData.image ? (
-              <Image src={aboutData.image} alt="About Us" fluid rounded />
+              <div className="position-relative" style={{ width: "100%", height: "300px" }}>
+                <Image
+                  src={aboutData.image}
+                  alt="About Us"
+                  fill
+                  style={{ objectFit: "cover", borderRadius: "10px" }}
+                />
+              </div>
             ) : (
               <div>No image available</div>
             )}
@@ -106,10 +118,19 @@ const About: React.FC = () => {
         </Row>
         <Row>
           {services.length > 0 ? (
-            services.map((service: any, index: number) => (
-              <Col md={4} key={index}>
+            services.map((service) => (
+              <Col md={4} key={service.id}>
                 <Card className="mb-4 h-100">
-                  <Card.Img variant="top" src={service.image} alt={service.title} />
+                  {service.image && (
+                    <div className="position-relative" style={{ width: "100%", height: "200px" }}>
+                      <Image
+                        src={service.image}
+                        alt={service.title}
+                        fill
+                        style={{ objectFit: "cover" }}
+                      />
+                    </div>
+                  )}
                   <Card.Body>
                     <Card.Title>{service.title}</Card.Title>
                     <Card.Text>{service.description}</Card.Text>
@@ -118,7 +139,7 @@ const About: React.FC = () => {
               </Col>
             ))
           ) : (
-            <div>No services available</div>
+            <p>No services available</p>
           )}
         </Row>
 
@@ -132,12 +153,10 @@ const About: React.FC = () => {
             </p>
           </Col>
         </Row>
-
-        {/* Display Why Choose Us data */}
         <Row>
           {whyChooseUs.length > 0 ? (
-            whyChooseUs.map((item: any, index: number) => (
-              <Col md={6} lg={3} key={index}>
+            whyChooseUs.map((item) => (
+              <Col md={6} lg={3} key={item.id}>
                 <Card className="mb-4 h-100">
                   <Card.Body>
                     <Card.Title>{item.title}</Card.Title>
@@ -147,7 +166,7 @@ const About: React.FC = () => {
               </Col>
             ))
           ) : (
-            <div>No information available for Why Choose Us.</div>
+            <p>No information available for Why Choose Us.</p>
           )}
         </Row>
       </Container>

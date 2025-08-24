@@ -10,9 +10,14 @@ interface Service extends RowDataPacket {
   image: string;
 }
 
+// Define API response types
+type ResponseData =
+  | { services: Service[] }
+  | { message: string };
+
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<{ services: Service[] } | { message: string }>
+  res: NextApiResponse<ResponseData>
 ) {
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method not allowed" });
@@ -23,16 +28,15 @@ export default async function handler(
       "SELECT id, title, description, image FROM services ORDER BY id DESC"
     );
 
-    console.log("Fetched services:", rows);
-
-    if (!rows || rows.length === 0) {
+    if (!rows.length) {
       return res.status(404).json({ message: "No services found." });
     }
 
-    res.status(200).json({ services: rows });
+    return res.status(200).json({ services: rows });
   } catch (error: unknown) {
     console.error("Error fetching services:", error);
-    res.status(500).json({
+
+    return res.status(500).json({
       message: error instanceof Error ? error.message : "Failed to fetch services",
     });
   }

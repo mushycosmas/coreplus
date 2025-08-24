@@ -28,20 +28,20 @@ const images: HeroImage[] = [
 ];
 
 const HeroSection: React.FC = () => {
-  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
-  const [animateClass, setAnimateClass] = useState<string>("animate");
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [animateClass, setAnimateClass] = useState("animate");
 
   // Slide change interval
   useEffect(() => {
     const intervalId = setInterval(() => {
-      setAnimateClass("");
-      setCurrentImageIndex((prevIndex) =>
-        prevIndex === images.length - 1 ? 0 : prevIndex + 1
+      setAnimateClass(""); // reset animation
+      setCurrentImageIndex((prev) =>
+        prev === images.length - 1 ? 0 : prev + 1
       );
     }, 5000);
 
     return () => clearInterval(intervalId);
-  }, [images.length]); // ✅ include images.length as dependency
+  }, []); // ✅ empty array because images is constant
 
   // Trigger animation class
   useEffect(() => {

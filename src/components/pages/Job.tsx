@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { Container, Row, Col, Card, Pagination, Form, Button, Badge } from "react-bootstrap";
 import ReUseHeroSection from "../section/ReUseHeroSection";
 import { FaBuilding, FaClock, FaMapMarkerAlt, FaBriefcase, FaCalendarAlt, FaSearch } from "react-icons/fa";
@@ -20,7 +21,6 @@ interface Job {
 const Jobs: React.FC = () => {
   const jobsPerPage = 10;
 
-  // Static job data that looks realistic
   const allJobs: Job[] = [
     {
       id: 1,
@@ -134,10 +134,7 @@ const Jobs: React.FC = () => {
 
   return (
     <>
-      <ReUseHeroSection
-        title="Open Jobs"
-        tagline="Find your dream job with ease!"
-      />
+      <ReUseHeroSection title="Open Jobs" tagline="Find your dream job with ease!" />
 
       <Container className="my-5">
         <Row>
@@ -171,9 +168,9 @@ const Jobs: React.FC = () => {
                     <Card className="shadow-sm border-0 rounded-4 hover-card p-3 transition-hover">
                       <Card.Body className="d-flex flex-column flex-md-row align-items-md-center">
                         <div className="me-md-3 mb-3 mb-md-0 text-center">
-                          <img
+                          <Image
                             src={job.logo}
-                            alt="Company Logo"
+                            alt={`${job.company} Logo`}
                             width={60}
                             height={60}
                             className="rounded-circle"
@@ -191,7 +188,10 @@ const Jobs: React.FC = () => {
                         </div>
 
                         <div className="text-md-end mt-3 mt-md-0">
-                          <Badge bg={job.jobType === "Full-Time" ? "success" : "warning"} className="mb-2">
+                          <Badge
+                            bg={job.jobType === "Full-Time" ? "success" : "warning"}
+                            className="mb-2"
+                          >
                             <FaBriefcase className="me-1" /> {job.jobType}
                           </Badge>
                           <div className="text-muted">
@@ -230,7 +230,7 @@ const Jobs: React.FC = () => {
       <style jsx>{`
         .hover-card:hover {
           transform: translateY(-5px);
-          box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
         }
         .transition-hover {
           transition: all 0.3s ease-in-out;

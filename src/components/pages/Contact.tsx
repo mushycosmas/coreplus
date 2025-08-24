@@ -25,10 +25,7 @@ const Contact: React.FC = () => {
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -37,20 +34,14 @@ const Contact: React.FC = () => {
     // Validation
     if (!formData.email || !formData.phone || !formData.address || !formData.message) {
       setErrorMessage("All fields are required.");
+      setSuccessMessage(null);
       return;
     }
 
-    // Reset previous messages
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
     try {
-      // Send form data to API
       const res = await fetch("/api/contact", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
@@ -58,20 +49,16 @@ const Contact: React.FC = () => {
 
       if (res.ok) {
         setSuccessMessage("Your message has been sent successfully!");
+        setErrorMessage(null);
+        setFormData({ email: "", phone: "", address: "", message: "" });
       } else {
         setErrorMessage(data.message || "Something went wrong.");
+        setSuccessMessage(null);
       }
-    } catch (error) {
+    } catch {
       setErrorMessage("An unexpected error occurred.");
+      setSuccessMessage(null);
     }
-
-    // Clear form data
-    setFormData({
-      email: "",
-      phone: "",
-      address: "",
-      message: "",
-    });
   };
 
   return (
