@@ -16,8 +16,8 @@ interface About {
 
 const ManageAbout: React.FC = () => {
   const [abouts, setAbouts] = useState<About[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [showModal, setShowModal] = useState<boolean>(false);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
   const [editingAbout, setEditingAbout] = useState<About | null>(null);
   const [formData, setFormData] = useState<Partial<About>>({
     title: "",
@@ -26,13 +26,14 @@ const ManageAbout: React.FC = () => {
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
 
+  // Fetch all abouts
   const fetchAbouts = async () => {
     try {
       const res = await fetch("/api/about");
       const data: About[] = await res.json();
       setAbouts(data);
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error("Failed to fetch abouts:", err);
     } finally {
       setLoading(false);
     }
@@ -65,8 +66,8 @@ const ManageAbout: React.FC = () => {
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setImageFile(file);
+    const file = e.target.files?.[0] ?? null;
+    setImageFile(file);
   };
 
   const handleSubmit = async () => {
@@ -75,22 +76,24 @@ const ManageAbout: React.FC = () => {
       return;
     }
 
-    const form = new FormData();
-    form.append("title", formData.title);
-    form.append("description", formData.description);
-    form.append("icon", formData.icon || "");
-    if (imageFile) form.append("image", imageFile);
+    const body = new FormData();
+    body.append("title", formData.title);
+    body.append("description", formData.description);
+    body.append("icon", formData.icon ?? "");
+    if (imageFile) body.append("image", imageFile);
 
     try {
-      if (editingAbout) {
-        await fetch(`/api/about/${editingAbout.id}`, { method: "PUT", body: form });
-      } else {
-        await fetch("/api/about", { method: "POST", body: form });
-      }
+      const url = editingAbout ? `/api/about/${editingAbout.id}` : "/api/about";
+      const method = editingAbout ? "PUT" : "POST";
+
+      const res = await fetch(url, { method, body });
+      if (!res.ok) throw new Error("Failed to save about");
+
       fetchAbouts();
       handleCloseModal();
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
+      alert("Error saving about item");
     }
   };
 
@@ -98,9 +101,10 @@ const ManageAbout: React.FC = () => {
     if (!confirm("Are you sure you want to delete this item?")) return;
     try {
       await fetch(`/api/about/${id}`, { method: "DELETE" });
-      setAbouts(abouts.filter((a) => a.id !== id));
-    } catch (error) {
-      console.error(error);
+      setAbouts((prev) => prev.filter((a) => a.id !== id));
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting about item");
     }
   };
 
@@ -128,12 +132,19 @@ const ManageAbout: React.FC = () => {
             </tr>
           </thead>
           <tbody>
+            {abouts.length === 0 && (
+              <tr>
+                <td colSpan={6} className="text-center">
+                  No items found.
+                </td>
+              </tr>
+            )}
             {abouts.map((about) => {
-              const IconComponent = about.icon ? Icons[about.icon] : null;
+              const IconComp = about.icon ? Icons[about.icon] : null;
               return (
                 <tr key={about.id}>
                   <td>{about.id}</td>
-                  <td>{IconComponent ? <IconComponent size={24} /> : "-"}</td>
+                  <td>{IconComp ? <IconComp size={24} /> : "-"}</td>
                   <td>{about.title}</td>
                   <td>{about.description}</td>
                   <td>
@@ -167,7 +178,6 @@ const ManageAbout: React.FC = () => {
         </Table>
       )}
 
-      {/* Modal Form */}
       <Modal show={showModal} onHide={handleCloseModal}>
         <Modal.Header closeButton>
           <Modal.Title>{editingAbout ? "Edit About" : "Add About"}</Modal.Title>
@@ -176,20 +186,37 @@ const ManageAbout: React.FC = () => {
           <Form>
             <Form.Group className="mb-3">
               <Form.Label>Title</Form.Label>
-              <Form.Control type="text" name="title" value={formData.title || ""} onChange={handleChange} />
+              <Form.Control
+                type="text"
+                name="title"
+                value={formData.title || ""}
+                onChange={handleChange}
+              />
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label>Description</Form.Label>
-              <Form.Control as="textarea" rows={3} name="description" value={formData.description || ""} onChange={handleChange} />
+              <Form.Control
+                as="textarea"
+                rows={3}
+                name="description"
+                value={formData.description || ""}
+                onChange={handleChange}
+              />
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label>Image</Form.Label>
               <Form.Control type="file" accept="image/*" onChange={handleImageChange} />
-              {formData.image && (
+              {(imageFile || formData.image) && (
                 <div className="mt-2">
-                  <Image src={formData.image} alt="Preview" width={80} height={80} style={{ objectFit: "cover" }} />
+                  <Image
+                    src={imageFile ? URL.createObjectURL(imageFile) : formData.image!}
+                    alt="Preview"
+                    width={80}
+                    height={80}
+                    style={{ objectFit: "cover" }}
+                  />
                 </div>
               )}
             </Form.Group>
@@ -210,8 +237,12 @@ const ManageAbout: React.FC = () => {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseModal}>Cancel</Button>
-          <Button variant="primary" onClick={handleSubmit}>{editingAbout ? "Update" : "Add"}</Button>
+          <Button variant="secondary" onClick={handleCloseModal}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleSubmit}>
+            {editingAbout ? "Update" : "Add"}
+          </Button>
         </Modal.Footer>
       </Modal>
     </AdminLayout>
