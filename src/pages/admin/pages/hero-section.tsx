@@ -1,6 +1,9 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import { Table, Button, Modal, Form } from "react-bootstrap";
+import Image from "next/image";
 
 interface HeroSection {
   id: number;
@@ -15,7 +18,8 @@ const ManageHeroSection: React.FC = () => {
   const [items, setItems] = useState<HeroSection[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<HeroSection | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<HeroSection>({
+    id: 0,
     title: "",
     subtitle: "",
     background_image: "",
@@ -50,16 +54,17 @@ const ManageHeroSection: React.FC = () => {
   const openModal = (item?: HeroSection) => {
     if (item) {
       setEditing(item);
-      setFormData({
-        title: item.title,
-        subtitle: item.subtitle,
-        background_image: item.background_image || "",
-        cta_text: item.cta_text || "",
-        cta_link: item.cta_link || "",
-      });
+      setFormData({ ...item });
     } else {
       setEditing(null);
-      setFormData({ title: "", subtitle: "", background_image: "", cta_text: "", cta_link: "" });
+      setFormData({
+        id: 0,
+        title: "",
+        subtitle: "",
+        background_image: "",
+        cta_text: "",
+        cta_link: "",
+      });
     }
     setShowModal(true);
   };
@@ -107,11 +112,14 @@ const ManageHeroSection: React.FC = () => {
               <td>{item.subtitle}</td>
               <td>
                 {item.background_image ? (
-                  <img
-                    src={item.background_image}
-                    alt={item.title}
-                    style={{ width: "100px", height: "auto" }}
-                  />
+                  <div style={{ width: 100, height: 60, position: "relative" }}>
+                    <Image
+                      src={item.background_image}
+                      alt={item.title}
+                      fill
+                      style={{ objectFit: "cover" }}
+                    />
+                  </div>
                 ) : (
                   "-"
                 )}

@@ -2,30 +2,29 @@
 
 import React, { useEffect, useState } from "react";
 import AdminLayout from "@/components/layouts/AdminLayout";
-import { Table, Button, Spinner, Modal, Form, Image } from "react-bootstrap";
+import { Table, Button, Spinner, Modal, Form } from "react-bootstrap";
+import Image from "next/image";
 import * as Icons from "react-icons/fa";
 
 interface Service {
   id?: number;
   title: string;
   description?: string;
-  icon?: string;
-  image?: string; // new field
+  icon?: keyof typeof Icons;
+  image?: string;
 }
 
 const ManageServices: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-
   const [showModal, setShowModal] = useState<boolean>(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
-
   const [formData, setFormData] = useState<Partial<Service>>({
     title: "",
     description: "",
     icon: "FaCogs",
   });
-  const [imageFile, setImageFile] = useState<File | null>(null); // new
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const fetchServices = async () => {
     try {
@@ -59,9 +58,7 @@ const ManageServices: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-  };
+  const handleCloseModal = () => setShowModal(false);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -83,19 +80,13 @@ const ManageServices: React.FC = () => {
     data.append("title", formData.title!);
     if (formData.description) data.append("description", formData.description);
     if (formData.icon) data.append("icon", formData.icon);
-    if (imageFile) data.append("image", imageFile); // append image
+    if (imageFile) data.append("image", imageFile);
 
     try {
       if (editingService) {
-        await fetch(`/api/services/${editingService.id}`, {
-          method: "PUT",
-          body: data,
-        });
+        await fetch(`/api/services/${editingService.id}`, { method: "PUT", body: data });
       } else {
-        await fetch("/api/services", {
-          method: "POST",
-          body: data,
-        });
+        await fetch("/api/services", { method: "POST", body: data });
       }
       fetchServices();
       handleCloseModal();
@@ -139,19 +130,16 @@ const ManageServices: React.FC = () => {
           </thead>
           <tbody>
             {services.map((service) => {
-              const IconComponent = service.icon && (Icons as any)[service.icon];
+              const IconComponent = service.icon ? Icons[service.icon] : null;
               return (
                 <tr key={service.id}>
                   <td>{service.id}</td>
                   <td>{IconComponent ? <IconComponent size={24} /> : "-"}</td>
                   <td>
                     {service.image ? (
-                      <Image
-                        src={service.image}
-                        alt={service.title}
-                        height={40}
-                        rounded
-                      />
+                      <div style={{ width: 40, height: 40, position: "relative" }}>
+                        <Image src={service.image} alt={service.title || ""} fill style={{ objectFit: "cover", borderRadius: 4 }} />
+                      </div>
                     ) : (
                       "-"
                     )}
@@ -182,7 +170,6 @@ const ManageServices: React.FC = () => {
         </Table>
       )}
 
-      {/* Modal Form */}
       <Modal show={showModal} onHide={handleCloseModal}>
         <Modal.Header closeButton>
           <Modal.Title>{editingService ? "Edit Service" : "Add Service"}</Modal.Title>
@@ -191,22 +178,11 @@ const ManageServices: React.FC = () => {
           <Form>
             <Form.Group className="mb-3">
               <Form.Label>Title</Form.Label>
-              <Form.Control
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-              />
+              <Form.Control type="text" name="title" value={formData.title} onChange={handleChange} />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Description</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-              />
+              <Form.Control as="textarea" rows={3} name="description" value={formData.description} onChange={handleChange} />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Icon</Form.Label>
@@ -218,34 +194,29 @@ const ManageServices: React.FC = () => {
                 ))}
               </Form.Select>
               <div className="mt-2">
-                {formData.icon &&
-                  (Icons as any)[formData.icon] &&
-                  React.createElement((Icons as any)[formData.icon], { size: 24 })}
+                {formData.icon && Icons[formData.icon] && React.createElement(Icons[formData.icon], { size: 24 })}
               </div>
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Image</Form.Label>
               <Form.Control type="file" onChange={handleFileChange} />
-              {editingService?.image && (
+              {imageFile ? (
                 <div className="mt-2">
-                  <Image
-                    src={editingService.image}
-                    alt="Current"
-                    height={40}
-                    rounded
-                  />
+                  <Image src={URL.createObjectURL(imageFile)} alt="Preview" width={40} height={40} style={{ borderRadius: 4 }} />
                 </div>
-              )}
+              ) : editingService?.image ? (
+                <div className="mt-2">
+                  <div style={{ width: 40, height: 40, position: "relative" }}>
+                    <Image src={editingService.image} alt="Current" fill style={{ objectFit: "cover", borderRadius: 4 }} />
+                  </div>
+                </div>
+              ) : null}
             </Form.Group>
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseModal}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleSubmit}>
-            {editingService ? "Update" : "Add"}
-          </Button>
+          <Button variant="secondary" onClick={handleCloseModal}>Cancel</Button>
+          <Button variant="primary" onClick={handleSubmit}>{editingService ? "Update" : "Add"}</Button>
         </Modal.Footer>
       </Modal>
     </AdminLayout>

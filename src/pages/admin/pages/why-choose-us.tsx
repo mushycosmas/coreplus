@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import { Table, Button, Modal, Form } from "react-bootstrap";
@@ -81,7 +83,7 @@ const ManageWhyChooseUs: React.FC = () => {
 
   return (
     <AdminLayout>
-      <h2>Manage "Why Choose Us"</h2>
+      <h2>{`Manage "Why Choose Us"`}</h2>
       <Button variant="primary" className="mb-3" onClick={() => openModal()}>
         Add New Item
       </Button>
@@ -106,10 +108,19 @@ const ManageWhyChooseUs: React.FC = () => {
               <td>{item.icon || "-"}</td>
               <td>{item.display_order}</td>
               <td>
-                <Button variant="info" size="sm" className="me-2" onClick={() => openModal(item)}>
+                <Button
+                  variant="info"
+                  size="sm"
+                  className="me-2"
+                  onClick={() => openModal(item)}
+                >
                   Edit
                 </Button>
-                <Button variant="danger" size="sm" onClick={() => handleDelete(item.id)}>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => handleDelete(item.id)}
+                >
                   Delete
                 </Button>
               </td>
@@ -133,6 +144,7 @@ const ManageWhyChooseUs: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               />
             </Form.Group>
+
             <Form.Group className="mb-3">
               <Form.Label>Description</Form.Label>
               <Form.Control
@@ -142,6 +154,7 @@ const ManageWhyChooseUs: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
             </Form.Group>
+
             <Form.Group className="mb-3">
               <Form.Label>Icon</Form.Label>
               <Form.Control
@@ -151,16 +164,20 @@ const ManageWhyChooseUs: React.FC = () => {
                 placeholder="e.g. FaStar"
               />
             </Form.Group>
+
             <Form.Group className="mb-3">
               <Form.Label>Display Order</Form.Label>
               <Form.Control
                 type="number"
                 value={formData.display_order}
-                onChange={(e) => setFormData({ ...formData, display_order: Number(e.target.value) })}
+                onChange={(e) =>
+                  setFormData({ ...formData, display_order: Number(e.target.value) })
+                }
               />
             </Form.Group>
           </Form>
         </Modal.Body>
+
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModal(false)}>
             Cancel

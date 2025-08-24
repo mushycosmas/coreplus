@@ -4,13 +4,14 @@ import React, { useEffect, useState } from "react";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import { Table, Button, Spinner, Modal, Form } from "react-bootstrap";
 import * as Icons from "react-icons/fa";
+import Image from "next/image";
 
 interface About {
   id?: number;
   title: string;
   description: string;
   image?: string;
-  icon?: string;
+  icon?: keyof typeof Icons;
 }
 
 const ManageAbout: React.FC = () => {
@@ -28,7 +29,7 @@ const ManageAbout: React.FC = () => {
   const fetchAbouts = async () => {
     try {
       const res = await fetch("/api/about");
-      const data = await res.json();
+      const data: About[] = await res.json();
       setAbouts(data);
     } catch (error) {
       console.error(error);
@@ -45,7 +46,7 @@ const ManageAbout: React.FC = () => {
     if (about) {
       setEditingAbout(about);
       setFormData({ ...about });
-      setImageFile(null); // Reset file input
+      setImageFile(null);
     } else {
       setEditingAbout(null);
       setFormData({ title: "", description: "", icon: "FaInfoCircle" });
@@ -56,9 +57,11 @@ const ManageAbout: React.FC = () => {
 
   const handleCloseModal = () => setShowModal(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,15 +83,9 @@ const ManageAbout: React.FC = () => {
 
     try {
       if (editingAbout) {
-        await fetch(`/api/about/${editingAbout.id}`, {
-          method: "PUT",
-          body: form,
-        });
+        await fetch(`/api/about/${editingAbout.id}`, { method: "PUT", body: form });
       } else {
-        await fetch("/api/about", {
-          method: "POST",
-          body: form,
-        });
+        await fetch("/api/about", { method: "POST", body: form });
       }
       fetchAbouts();
       handleCloseModal();
@@ -101,7 +98,7 @@ const ManageAbout: React.FC = () => {
     if (!confirm("Are you sure you want to delete this item?")) return;
     try {
       await fetch(`/api/about/${id}`, { method: "DELETE" });
-      setAbouts(abouts.filter(a => a.id !== id));
+      setAbouts(abouts.filter((a) => a.id !== id));
     } catch (error) {
       console.error(error);
     }
@@ -132,7 +129,7 @@ const ManageAbout: React.FC = () => {
           </thead>
           <tbody>
             {abouts.map((about) => {
-              const IconComponent = about.icon && (Icons as any)[about.icon];
+              const IconComponent = about.icon ? Icons[about.icon] : null;
               return (
                 <tr key={about.id}>
                   <td>{about.id}</td>
@@ -140,10 +137,23 @@ const ManageAbout: React.FC = () => {
                   <td>{about.title}</td>
                   <td>{about.description}</td>
                   <td>
-                    {about.image && <img src={about.image} alt={about.title} width={50} />}
+                    {about.image && (
+                      <Image
+                        src={about.image}
+                        alt={about.title}
+                        width={50}
+                        height={50}
+                        style={{ objectFit: "cover" }}
+                      />
+                    )}
                   </td>
                   <td>
-                    <Button variant="info" size="sm" className="me-2" onClick={() => handleShowModal(about)}>
+                    <Button
+                      variant="info"
+                      size="sm"
+                      className="me-2"
+                      onClick={() => handleShowModal(about)}
+                    >
                       Edit
                     </Button>
                     <Button variant="danger" size="sm" onClick={() => deleteAbout(about.id!)}>
@@ -179,7 +189,7 @@ const ManageAbout: React.FC = () => {
               <Form.Control type="file" accept="image/*" onChange={handleImageChange} />
               {formData.image && (
                 <div className="mt-2">
-                  <img src={formData.image} alt="Preview" width={80} />
+                  <Image src={formData.image} alt="Preview" width={80} height={80} style={{ objectFit: "cover" }} />
                 </div>
               )}
             </Form.Group>
@@ -187,14 +197,14 @@ const ManageAbout: React.FC = () => {
             <Form.Group className="mb-3">
               <Form.Label>Icon</Form.Label>
               <Form.Select name="icon" value={formData.icon} onChange={handleChange}>
-                {Object.keys(Icons).map(iconName => (
+                {Object.keys(Icons).map((iconName) => (
                   <option key={iconName} value={iconName}>
                     {iconName}
                   </option>
                 ))}
               </Form.Select>
               <div className="mt-2">
-                {formData.icon && (Icons as any)[formData.icon] && React.createElement((Icons as any)[formData.icon], { size: 24 })}
+                {formData.icon && Icons[formData.icon] && React.createElement(Icons[formData.icon], { size: 24 })}
               </div>
             </Form.Group>
           </Form>
