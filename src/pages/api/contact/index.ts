@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/lib/db";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 
-// Define the shape of a contact record
+// Define the type for a contact record
 interface ContactData extends RowDataPacket {
   id: number;
   email: string;
@@ -11,13 +11,9 @@ interface ContactData extends RowDataPacket {
   message: string;
 }
 
-// For insert result
-interface ContactInsertResult extends ResultSetHeader {}
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method === "GET") {
-      // SELECT query: use RowDataPacket[]
       const [rows] = await db.query<RowDataPacket[]>("SELECT * FROM contact");
       const contacts = rows as ContactData[];
       return res.status(200).json(contacts);
@@ -30,7 +26,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ message: "All fields are required" });
       }
 
-      // INSERT query: use ResultSetHeader
       const [result] = await db.query<ResultSetHeader>(
         "INSERT INTO contact (email, phone, address, message) VALUES (?, ?, ?, ?)",
         [email, phone, address, message]
