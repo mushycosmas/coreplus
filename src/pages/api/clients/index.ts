@@ -5,34 +5,29 @@ import path from "path";
 import { db } from "@/lib/db";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 
-// Disable default Next.js body parser
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: false, // disable Next.js body parser
   },
 };
 
-// Interfaces
-interface ServiceData extends RowDataPacket {
+interface ClientData extends RowDataPacket {
   id: number;
-  title: string;
-  description: string;
-  icon: string;
-  image?: string | null;
+  name: string;
+  logo?: string | null;
+  created_at: string;
 }
 
-interface ServiceFormFields {
-  title?: string | string[];
-  description?: string | string[];
-  icon?: string | string[];
+interface ClientFormFields {
+  name?: string | string[];
 }
 
-interface ServiceFiles {
-  image?: File | File[];
+interface ClientFiles {
+  logo?: File | File[];
 }
 
-// Helper to parse form
-const parseForm = (req: NextApiRequest): Promise<{ fields: ServiceFormFields; files: ServiceFiles }> => {
+// helper to parse form
+const parseForm = (req: NextApiRequest): Promise<{ fields: ClientFormFields; files: ClientFiles }> => {
   const uploadDir = path.join(process.cwd(), "public/uploads");
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -45,63 +40,54 @@ const parseForm = (req: NextApiRequest): Promise<{ fields: ServiceFormFields; fi
   return new Promise((resolve, reject) => {
     form.parse(req, (err, fields, files) => {
       if (err) return reject(err);
-      resolve({ fields: fields as ServiceFormFields, files: files as ServiceFiles });
+      resolve({ fields: fields as ClientFormFields, files: files as ClientFiles });
     });
   });
 };
 
-// API handler
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // GET /api/services
     if (req.method === "GET") {
-      const [rows] = await db.query<ServiceData[]>("SELECT * FROM services ORDER BY id DESC");
+      const [rows] = await db.query<ClientData[]>("SELECT * FROM clients ORDER BY created_at DESC");
       return res.status(200).json(rows);
     }
 
-    // POST /api/services
     if (req.method === "POST") {
       const { fields, files } = await parseForm(req);
 
-      // Parse fields
-      const title = Array.isArray(fields.title) ? fields.title[0] : fields.title;
-      const description = Array.isArray(fields.description) ? fields.description[0] : fields.description;
-      const icon = Array.isArray(fields.icon) ? fields.icon[0] : fields.icon;
+      let name = "";
+      if (Array.isArray(fields.name)) name = fields.name[0];
+      else if (typeof fields.name === "string") name = fields.name;
 
-      if (!title || !description || !icon) {
-        return res.status(400).json({ message: "Title, description, and icon are required" });
-      }
+      if (!name.trim()) return res.status(400).json({ message: "Client name is required" });
 
-      // Handle uploaded image
-      const uploadedFile = files.image;
-      let imagePath: string | null = null;
-      if (uploadedFile) {
-        const file = Array.isArray(uploadedFile) ? uploadedFile[0] : uploadedFile;
-        if (file.filepath) {
-          imagePath = `/uploads/${path.basename(file.filepath)}`;
+      let logoPath: string | null = null;
+      const logoFile = files.logo;
+      if (logoFile) {
+        if (Array.isArray(logoFile) && logoFile[0]?.filepath) {
+          logoPath = `/uploads/${path.basename(logoFile[0].filepath)}`;
+        } else if ((logoFile as File).filepath) {
+          logoPath = `/uploads/${path.basename((logoFile as File).filepath)}`;
         }
       }
 
       const [result] = await db.query<ResultSetHeader>(
-        "INSERT INTO services (title, description, icon, image) VALUES (?, ?, ?, ?)",
-        [title, description, icon, imagePath]
+        "INSERT INTO clients (name, logo) VALUES (?, ?)",
+        [name, logoPath]
       );
 
       return res.status(201).json({
         id: result.insertId,
-        title,
-        description,
-        icon,
-        image: imagePath,
+        name,
+        logo: logoPath,
       });
     }
 
-    // Method not allowed
     res.setHeader("Allow", ["GET", "POST"]);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal server error";
-    console.error("Services API error:", error);
+    console.error("Error creating client:", error);
     return res.status(500).json({ message });
   }
 }
