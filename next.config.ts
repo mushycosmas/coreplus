@@ -13,9 +13,19 @@ const nextConfig = {
   },
 
   images: {
-    domains: [
-      'coreplus.co.tz',        // your domain
-      'upload.wikimedia.org',  // external images
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'coreplus.co.tz',
+        port: '',
+        pathname: '/uploads/**', // adjust path if needed
+      },
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 
