@@ -3,17 +3,16 @@ import formidable, { File } from "formidable";
 import fs from "fs";
 import path from "path";
 import { db } from "@/lib/db";
-import { ResultSetHeader, RowDataPacket } from "mysql2";
+import { RowDataPacket, ResultSetHeader } from "mysql2";
 
-// Disable Next.js body parser
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: false, // disable Next.js default parser
   },
 };
 
-// Parse multipart/form-data with Formidable
-function parseForm(req: NextApiRequest) {
+// Parse multipart/form-data
+const parseForm = (req: NextApiRequest) => {
   const uploadDir = path.join(process.cwd(), "public/uploads");
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -29,9 +28,9 @@ function parseForm(req: NextApiRequest) {
       else resolve({ fields, files });
     });
   });
-}
+};
 
-interface ServiceData extends RowDataPacket {
+interface ServiceRow extends RowDataPacket {
   id: number;
   title: string;
   description: string;
@@ -43,11 +42,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // GET all services
     if (req.method === "GET") {
-      const [rows] = await db.query<ServiceData[]>("SELECT * FROM services ORDER BY id DESC");
+      const [rows] = await db.query<ServiceRow[]>("SELECT * FROM services ORDER BY id DESC");
       return res.status(200).json(rows);
     }
 
-    // POST → create new service
+    // POST new service
     if (req.method === "POST") {
       const { fields, files } = await parseForm(req);
 
@@ -55,16 +54,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const description = Array.isArray(fields.description) ? fields.description[0] : fields.description;
       const icon = Array.isArray(fields.icon) ? fields.icon[0] : fields.icon;
 
-      if (!title || !description || !icon) {
-        return res.status(400).json({ message: "Title, description, and icon are required" });
-      }
+      if (!title || !icon) return res.status(400).json({ message: "Title and icon are required" });
 
-      const uploadedFile = Array.isArray(files.image) ? files.image[0] : files.image as File | undefined;
-      const imagePath = uploadedFile ? `/uploads/${uploadedFile.newFilename}` : null;
+      // Handle uploaded image
+      const uploadedFile = Array.isArray(files.image) ? files.image[0] : (files.image as File | undefined);
+      const imagePath = uploadedFile ? `/uploads/${path.basename(uploadedFile.filepath)}` : null;
 
       const [result] = await db.query<ResultSetHeader>(
         "INSERT INTO services (title, description, icon, image) VALUES (?, ?, ?, ?)",
-        [title, description, icon, imagePath]
+        [title, description || null, icon, imagePath]
       );
 
       return res.status(201).json({
@@ -76,10 +74,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    return res.status(405).json({ message: "Method not allowed" });
-  } catch (err) {
-    console.error("Services API error:", err);
-    const message = err instanceof Error ? err.message : "Server error";
+    // Method not allowed
+    res.setHeader("Allow", ["GET", "POST"]);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Server error";
+    console.error("Services API error:", error);
     return res.status(500).json({ message });
   }
 }
