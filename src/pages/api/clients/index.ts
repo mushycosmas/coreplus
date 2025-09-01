@@ -1,15 +1,13 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+import { db } from "@/lib/db";
 import formidable, { File } from "formidable";
 import fs from "fs";
 import path from "path";
-import { db } from "@/lib/db";
-import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 export const config = {
   api: { bodyParser: false },
 };
 
-interface ClientData extends RowDataPacket {
+interface ClientData {
   id: number;
   name: string;
   logo?: string | null;
@@ -17,14 +15,15 @@ interface ClientData extends RowDataPacket {
 }
 
 interface ClientFormFields {
-  name?: string[];
+  name?: string | string[];
 }
 
 interface ClientFiles {
   logo?: File | File[];
 }
 
-function parseForm(req: NextApiRequest): Promise<{ fields: ClientFormFields; files: ClientFiles }> {
+// Wrap formidable parse in a promise
+function parseForm(req: Request): Promise<{ fields: ClientFormFields; files: ClientFiles }> {
   const uploadDir = path.join(process.cwd(), "public/uploads");
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -35,63 +34,57 @@ function parseForm(req: NextApiRequest): Promise<{ fields: ClientFormFields; fil
   });
 
   return new Promise((resolve, reject) => {
-    form.parse(req, (err, fields, files) => {
+    form.parse(req as any, (err, fields, files) => {
       if (err) return reject(err);
       resolve({ fields: fields as ClientFormFields, files: files as ClientFiles });
     });
   });
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export async function POST(req: Request) {
   try {
-    if (req.method === "GET") {
-      const [rows] = await db.query<ClientData[]>("SELECT * FROM clients ORDER BY created_at DESC");
-      return res.status(200).json(rows);
+    const { fields, files } = await parseForm(req);
+
+    // Extract name
+    let name = "";
+    if (Array.isArray(fields.name)) name = fields.name[0];
+    else if (typeof fields.name === "string") name = fields.name;
+
+    if (!name.trim()) return new Response(JSON.stringify({ message: "Client name is required" }), { status: 400 });
+
+    // Handle logo
+    let logoPath: string | null = null;
+    const logoFile = files.logo;
+    if (logoFile) {
+      if (Array.isArray(logoFile) && logoFile[0]?.filepath) {
+        logoPath = `/uploads/${path.basename(logoFile[0].filepath)}`;
+      } else if ((logoFile as File)?.filepath) {
+        logoPath = `/uploads/${path.basename((logoFile as File).filepath)}`;
+      }
     }
 
-    if (req.method === "POST") {
-      const { fields, files } = await parseForm(req);
+    const [result] = await db.query("INSERT INTO clients (name, logo) VALUES (?, ?)", [name, logoPath]);
 
-      // Safely extract name
-      let name = "";
-      if (Array.isArray(fields.name)) {
-        name = fields.name[0];
-      } else if (typeof fields.name === "string") {
-        name = fields.name;
-      }
-
-      if (!name.trim()) {
-        return res.status(400).json({ message: "Client name is required" });
-      }
-
-      // Handle logo upload
-      let logoPath: string | null = null;
-      const logoFile = files.logo;
-      if (logoFile) {
-        if (Array.isArray(logoFile) && logoFile[0]?.filepath) {
-          logoPath = `/uploads/${path.basename(logoFile[0].filepath)}`;
-        } else if ((logoFile as File).filepath) {
-          logoPath = `/uploads/${path.basename((logoFile as File).filepath)}`;
-        }
-      }
-
-      const [result] = await db.query<ResultSetHeader>(
-        "INSERT INTO clients (name, logo) VALUES (?, ?)",
-        [name, logoPath]
-      );
-
-      return res.status(201).json({
-        id: result.insertId,
+    return new Response(
+      JSON.stringify({
+        id: (result as any).insertId,
         name,
         logo: logoPath,
-      });
-    }
+      }),
+      { status: 201 }
+    );
+  } catch (err: any) {
+    console.error("Error creating client:", err);
+    return new Response(JSON.stringify({ message: err.message || "Internal server error" }), { status: 500 });
+  }
+}
 
-    res.setHeader("Allow", ["GET", "POST"]);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    console.error("Error creating client:", error);
-    return res.status(500).json({ message });
+export async function GET() {
+  try {
+    const [rows] = await db.query<ClientData[]>("SELECT * FROM clients ORDER BY created_at DESC");
+    return new Response(JSON.stringify(rows), { status: 200 });
+  } catch (err: any) {
+    console.error(err);
+    return new Response(JSON.stringify({ message: err.message || "Internal server error" }), { status: 500 });
   }
 }
