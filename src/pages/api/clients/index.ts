@@ -1,4 +1,3 @@
-// src/pages/api/clients/index.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import formidable, { File } from "formidable";
 import fs from "fs";
@@ -7,12 +6,9 @@ import { db } from "@/lib/db";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 export const config = {
-  api: {
-    bodyParser: false, // Disable Next.js body parser for file uploads
-  },
+  api: { bodyParser: false },
 };
 
-// Types
 interface ClientData extends RowDataPacket {
   id: number;
   name: string;
@@ -28,7 +24,6 @@ interface ClientFiles {
   logo?: File | File[];
 }
 
-// Helper: parse formidable form
 function parseForm(req: NextApiRequest): Promise<{ fields: ClientFormFields; files: ClientFiles }> {
   const uploadDir = path.join(process.cwd(), "public/uploads");
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -47,25 +42,29 @@ function parseForm(req: NextApiRequest): Promise<{ fields: ClientFormFields; fil
   });
 }
 
-// API Handler
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // GET /api/clients
     if (req.method === "GET") {
       const [rows] = await db.query<ClientData[]>("SELECT * FROM clients ORDER BY created_at DESC");
       return res.status(200).json(rows);
     }
 
-    // POST /api/clients
     if (req.method === "POST") {
       const { fields, files } = await parseForm(req);
 
-      const name = Array.isArray(fields.name) ? fields.name[0] : fields.name?.toString() ?? "";
+      // Safely extract name
+      let name = "";
+      if (Array.isArray(fields.name)) {
+        name = fields.name[0];
+      } else if (typeof fields.name === "string") {
+        name = fields.name;
+      }
+
       if (!name.trim()) {
         return res.status(400).json({ message: "Client name is required" });
       }
 
-      // Handle uploaded logo
+      // Handle logo upload
       let logoPath: string | null = null;
       const logoFile = files.logo;
       if (logoFile) {
@@ -88,7 +87,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Method not allowed
     res.setHeader("Allow", ["GET", "POST"]);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   } catch (error: unknown) {
