@@ -1,36 +1,70 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/lib/db";
-import fs from "fs";
+import formidable, { File } from "formidable";
 import path from "path";
-import { RowDataPacket } from "mysql2";
+import { ResultSetHeader } from "mysql2";
 
-interface AboutRow extends RowDataPacket {
-  image?: string;
+export const config = {
+  api: {
+    bodyParser: false, // Required for formidable
+  },
+};
+
+// Define form fields type
+interface AboutFormFields {
+  title?: string[];
+  description?: string[];
+  icon?: string[];
+}
+
+interface AboutFiles {
+  image?: File[];
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { id } = req.query;
+  if (req.method !== "PUT") {
+    return res.status(405).json({ message: "Method not allowed" });
+  }
 
-  if (req.method !== "PUT") return res.status(405).json({ message: "Method not allowed" });
+  const form = formidable({
+    multiples: false,
+    uploadDir: path.join(process.cwd(), "public/uploads"),
+    keepExtensions: true,
+  });
+
+  // Wrap parse in a typed promise
+  const parseForm = (): Promise<{ fields: AboutFormFields; files: AboutFiles }> =>
+    new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) reject(err);
+        else resolve({ fields: fields as AboutFormFields, files: files as AboutFiles });
+      });
+    });
 
   try {
-    // Query typed correctly
-    const [existingRows] = await db.query<AboutRow[]>(
-      "SELECT image FROM about WHERE id = ?",
-      [id]
-    );
-    const existing = existingRows[0];
+    const { fields, files } = await parseForm();
 
-    // Example: deleting old image
-    if (existing?.image) {
-      const oldPath = path.join(process.cwd(), "public", existing.image);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    const id = req.query.id as string;
+    const title = fields.title?.[0] ?? "";
+    const description = fields.description?.[0] ?? "";
+    const icon = fields.icon?.[0] ?? "";
+
+    let imagePath: string | null = null;
+    if (files.image && files.image[0]) {
+      const uploadedFile = files.image[0];
+      imagePath = `/uploads/${path.basename(uploadedFile.filepath)}`;
     }
 
-    // ...continue your update logic here
-    res.status(200).json({ message: "Success" });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Server error";
-    res.status(500).json({ message });
+    // Safe parameterized query to avoid SQL injection
+    await db.query<ResultSetHeader>(
+      "UPDATE about SET title = ?, description = ?, icon = ?, image = IFNULL(?, image) WHERE id = ?",
+      [title, description, icon, imagePath, id]
+    );
+
+    return res.status(200).json({ message: "About updated successfully" });
+  } catch (error: unknown) {
+    console.error("Error updating about:", error);
+    const message = error instanceof Error ? error.message : "Unknown server error";
+    return res.status(500).json({ message });
   }
 }
