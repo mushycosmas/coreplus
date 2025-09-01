@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import formidable, { File } from "formidable";
 import fs from "fs";
 import path from "path";
+import { ResultSetHeader } from "mysql2";
 
 export const config = {
   api: { bodyParser: false },
@@ -34,7 +35,8 @@ function parseForm(req: Request): Promise<{ fields: ClientFormFields; files: Cli
   });
 
   return new Promise((resolve, reject) => {
-    form.parse(req as any, (err, fields, files) => {
+    // `formidable` typings expect Node IncomingMessage, cast Request to Node type
+    form.parse(req as unknown as NodeJS.ReadableStream, (err, fields, files) => {
       if (err) return reject(err);
       resolve({ fields: fields as ClientFormFields, files: files as ClientFiles });
     });
@@ -45,14 +47,14 @@ export async function POST(req: Request) {
   try {
     const { fields, files } = await parseForm(req);
 
-    // Extract name
     let name = "";
     if (Array.isArray(fields.name)) name = fields.name[0];
     else if (typeof fields.name === "string") name = fields.name;
 
-    if (!name.trim()) return new Response(JSON.stringify({ message: "Client name is required" }), { status: 400 });
+    if (!name.trim()) {
+      return new Response(JSON.stringify({ message: "Client name is required" }), { status: 400 });
+    }
 
-    // Handle logo
     let logoPath: string | null = null;
     const logoFile = files.logo;
     if (logoFile) {
@@ -63,19 +65,19 @@ export async function POST(req: Request) {
       }
     }
 
-    const [result] = await db.query("INSERT INTO clients (name, logo) VALUES (?, ?)", [name, logoPath]);
-
-    return new Response(
-      JSON.stringify({
-        id: (result as any).insertId,
-        name,
-        logo: logoPath,
-      }),
-      { status: 201 }
+    const result = await db.query<ResultSetHeader>(
+      "INSERT INTO clients (name, logo) VALUES (?, ?)",
+      [name, logoPath]
     );
-  } catch (err: any) {
+
+    // Type-safe cast for insertId
+    const insertId = (result[0] as ResultSetHeader).insertId;
+
+    return new Response(JSON.stringify({ id: insertId, name, logo: logoPath }), { status: 201 });
+  } catch (err: unknown) {
     console.error("Error creating client:", err);
-    return new Response(JSON.stringify({ message: err.message || "Internal server error" }), { status: 500 });
+    const message = err instanceof Error ? err.message : "Internal server error";
+    return new Response(JSON.stringify({ message }), { status: 500 });
   }
 }
 
@@ -83,8 +85,9 @@ export async function GET() {
   try {
     const [rows] = await db.query<ClientData[]>("SELECT * FROM clients ORDER BY created_at DESC");
     return new Response(JSON.stringify(rows), { status: 200 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err);
-    return new Response(JSON.stringify({ message: err.message || "Internal server error" }), { status: 500 });
+    const message = err instanceof Error ? err.message : "Internal server error";
+    return new Response(JSON.stringify({ message }), { status: 500 });
   }
 }
