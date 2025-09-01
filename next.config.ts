@@ -2,16 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
 
-  typescript: {
-    ignoreBuildErrors: true,
+  images: {
+    domains: ['coreplus.co.tz'],
   },
 
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-
-  // no images config at all
-
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
   outputFileTracingRoot: __dirname,
 };
 
