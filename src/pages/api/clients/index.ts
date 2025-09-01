@@ -1,14 +1,17 @@
-import { db } from "@/lib/db";
+import type { NextApiRequest, NextApiResponse } from "next";
 import formidable, { File } from "formidable";
 import fs from "fs";
 import path from "path";
-import { ResultSetHeader } from "mysql2";
+import { db } from "@/lib/db";
+import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 export const config = {
-  api: { bodyParser: false },
+  api: {
+    bodyParser: false, // disable Next.js body parser
+  },
 };
 
-interface ClientData {
+interface ClientData extends RowDataPacket {
   id: number;
   name: string;
   logo?: string | null;
@@ -23,71 +26,68 @@ interface ClientFiles {
   logo?: File | File[];
 }
 
-// Wrap formidable parse in a promise
-function parseForm(req: Request): Promise<{ fields: ClientFormFields; files: ClientFiles }> {
+// helper to parse form
+const parseForm = (req: NextApiRequest): Promise<{ fields: ClientFormFields; files: ClientFiles }> => {
   const uploadDir = path.join(process.cwd(), "public/uploads");
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
   const form = formidable({
     multiples: false,
-    uploadDir,
     keepExtensions: true,
+    uploadDir,
   });
 
   return new Promise((resolve, reject) => {
-    // `formidable` typings expect Node IncomingMessage, cast Request to Node type
-    form.parse(req as unknown as NodeJS.ReadableStream, (err, fields, files) => {
+    form.parse(req, (err, fields, files) => {
       if (err) return reject(err);
       resolve({ fields: fields as ClientFormFields, files: files as ClientFiles });
     });
   });
-}
+};
 
-export async function POST(req: Request) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { fields, files } = await parseForm(req);
-
-    let name = "";
-    if (Array.isArray(fields.name)) name = fields.name[0];
-    else if (typeof fields.name === "string") name = fields.name;
-
-    if (!name.trim()) {
-      return new Response(JSON.stringify({ message: "Client name is required" }), { status: 400 });
+    if (req.method === "GET") {
+      const [rows] = await db.query<ClientData[]>("SELECT * FROM clients ORDER BY created_at DESC");
+      return res.status(200).json(rows);
     }
 
-    let logoPath: string | null = null;
-    const logoFile = files.logo;
-    if (logoFile) {
-      if (Array.isArray(logoFile) && logoFile[0]?.filepath) {
-        logoPath = `/uploads/${path.basename(logoFile[0].filepath)}`;
-      } else if ((logoFile as File)?.filepath) {
-        logoPath = `/uploads/${path.basename((logoFile as File).filepath)}`;
+    if (req.method === "POST") {
+      const { fields, files } = await parseForm(req);
+
+      let name = "";
+      if (Array.isArray(fields.name)) name = fields.name[0];
+      else if (typeof fields.name === "string") name = fields.name;
+
+      if (!name.trim()) return res.status(400).json({ message: "Client name is required" });
+
+      let logoPath: string | null = null;
+      const logoFile = files.logo;
+      if (logoFile) {
+        if (Array.isArray(logoFile) && logoFile[0]?.filepath) {
+          logoPath = `/uploads/${path.basename(logoFile[0].filepath)}`;
+        } else if ((logoFile as File).filepath) {
+          logoPath = `/uploads/${path.basename((logoFile as File).filepath)}`;
+        }
       }
+
+      const [result] = await db.query<ResultSetHeader>(
+        "INSERT INTO clients (name, logo) VALUES (?, ?)",
+        [name, logoPath]
+      );
+
+      return res.status(201).json({
+        id: result.insertId,
+        name,
+        logo: logoPath,
+      });
     }
 
-    const result = await db.query<ResultSetHeader>(
-      "INSERT INTO clients (name, logo) VALUES (?, ?)",
-      [name, logoPath]
-    );
-
-    // Type-safe cast for insertId
-    const insertId = (result[0] as ResultSetHeader).insertId;
-
-    return new Response(JSON.stringify({ id: insertId, name, logo: logoPath }), { status: 201 });
-  } catch (err: unknown) {
-    console.error("Error creating client:", err);
-    const message = err instanceof Error ? err.message : "Internal server error";
-    return new Response(JSON.stringify({ message }), { status: 500 });
-  }
-}
-
-export async function GET() {
-  try {
-    const [rows] = await db.query<ClientData[]>("SELECT * FROM clients ORDER BY created_at DESC");
-    return new Response(JSON.stringify(rows), { status: 200 });
-  } catch (err: unknown) {
-    console.error(err);
-    const message = err instanceof Error ? err.message : "Internal server error";
-    return new Response(JSON.stringify({ message }), { status: 500 });
+    res.setHeader("Allow", ["GET", "POST"]);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    console.error("Error creating client:", error);
+    return res.status(500).json({ message });
   }
 }
