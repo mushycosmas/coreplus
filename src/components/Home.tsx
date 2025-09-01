@@ -18,6 +18,7 @@ interface WhyChooseUs {
   id: number;
   title: string;
   description: string;
+  icon: string;
 }
 
 interface AboutUs {
@@ -98,6 +99,23 @@ const Home: React.FC = () => {
     </Container>
   );
 
+  // Normalize & get icons
+  const getIcon = (iconName: string) => {
+    if (!iconName) return null;
+
+    // Convert db value into PascalCase for react-icons
+    const formattedName = iconName
+      .replace(/[-_](.)/g, (_, c) => c.toUpperCase()) // fa-rocket -> faRocket
+      .replace(/^(fa)([a-z])/, (_, p1, p2) => p1.toUpperCase() + p2.toUpperCase()); // faRocket -> FaRocket
+
+    const IconComponent = (FaIcons as any)[formattedName];
+    return IconComponent ? (
+      <IconComponent size={40} className="text-warning mb-3 feature-icon" />
+    ) : (
+      <FaIcons.FaRegQuestionCircle size={40} className="text-muted mb-3 feature-icon" />
+    );
+  };
+
   return (
     <>
       <HeroSection />
@@ -123,7 +141,7 @@ const Home: React.FC = () => {
         <h2 className="section-title">Our Mission & Vision</h2>
         <Row className="justify-content-center">
           {missionVision.map(item => {
-            const IconComponent = FaIcons[item.icon as keyof typeof FaIcons] || FaIcons.FaBullseye;
+            const IconComponent = (FaIcons as any)[item.icon] || FaIcons.FaBullseye;
             return (
               <Col md={5} className="mb-4" key={item.id}>
                 <Card className="p-4 shadow-sm mission-vision-card h-100 text-center">
@@ -162,19 +180,23 @@ const Home: React.FC = () => {
       <Container className="my-5 text-center section why-choose-section p-5">
         <h2 className="section-title">Why Choose Us?</h2>
         <Row className="justify-content-center">
-          {whyChooseUs.length > 0 ? whyChooseUs.map(item => (
-            <Col md={4} className="mb-4" key={item.id}>
-              <Card className="p-4 shadow-sm feature-card h-100 text-center">
-                <FaIcons.FaRocket size={40} className="feature-icon text-warning mb-3" />
-                <h4>{item.title}</h4>
-                <p>{item.description}</p>
-              </Card>
-            </Col>
-          )) : <p>No data available</p>}
+          {whyChooseUs.length > 0 ? (
+            whyChooseUs.map((item) => (
+              <Col md={4} className="mb-4" key={item.id}>
+                <Card className="p-4 shadow-sm feature-card h-100 text-center">
+                  <div className="mb-3">{getIcon(item.icon)}</div>
+                  <h4>{item.title}</h4>
+                  <p>{item.description}</p>
+                </Card>
+              </Col>
+            ))
+          ) : (
+            <p>No data available</p>
+          )}
         </Row>
       </Container>
 
-      {/* Clients (Horizontal Scroll) */}
+      {/* Clients */}
       <Container className="my-5 text-center section clients-section p-5">
         <h2 className="section-title">Our Clients</h2>
         <div className="clients-scroll">
