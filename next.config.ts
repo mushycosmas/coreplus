@@ -3,33 +3,15 @@ const nextConfig = {
   reactStrictMode: true,
 
   typescript: {
-    // Ignores build errors from TypeScript
     ignoreBuildErrors: true,
   },
 
   eslint: {
-    // Ignores ESLint errors during build
     ignoreDuringBuilds: true,
   },
 
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'coreplus.co.tz',
-        port: '',
-        pathname: '/uploads/**', // adjust path if needed
-      },
-      {
-        protocol: 'https',
-        hostname: 'upload.wikimedia.org',
-        port: '',
-        pathname: '/**',
-      },
-    ],
-  },
+  // no images config at all
 
-  // Helps with multiple lockfiles warning
   outputFileTracingRoot: __dirname,
 };
 
