@@ -210,18 +210,34 @@ const Home: React.FC = () => {
       </Container>
 
       {/* Clients */}
-      <Container className="my-5 text-center section clients-section p-5">
-        <h2 className="section-title">Our Clients</h2>
-        <div className="clients-scroll">
-          {clients.length > 0 ? clients.map(client => (
-            <div className="client-item" key={client.id}>
-              <div className="client-circle mb-2">
-                <Image src={client.logo || "/images/default-client.png"} alt={`Client ${client.name}`} width={80} height={80} className="client-logo" />
-              </div>
-            </div>
-          )) : <p>No clients available</p>}
+    <Container className="my-5 text-center section clients-section p-5">
+  <h2 className="section-title">Our Clients</h2>
+  <div className="clients-scroll">
+    {clients.length > 0 ? (
+      clients.map((client) => (
+        <div className="client-item" key={client.id}>
+          <div className="client-circle mb-2">
+            <Card.Img
+              variant="top"
+              src={client.logo || "/images/default-client.png"}
+              alt={`Client ${client.name}`}
+              style={{
+                height: "80px",
+                width: "80px",
+                objectFit: "cover",
+                borderRadius: "50%",
+              }}
+              className="client-logo"
+            />
+          </div>
         </div>
-      </Container>
+      ))
+    ) : (
+      <p>No clients available</p>
+    )}
+  </div>
+</Container>
+
 
       <style jsx>{`
         /* Section colors */
