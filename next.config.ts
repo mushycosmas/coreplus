@@ -10,7 +10,10 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
 
-  // no images config at all
+  // allow serving images from public/uploads without optimization errors
+  images: {
+    unoptimized: true,
+  },
 
   outputFileTracingRoot: __dirname,
 };
