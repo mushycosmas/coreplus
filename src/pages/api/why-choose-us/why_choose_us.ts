@@ -19,7 +19,7 @@ export default async function handler(
   try {
     // Fetch data from the database
     const [rows] = await db.query<WhyChooseUsRow[]>(
-      "SELECT id, title, description FROM why_choose_us ORDER BY id DESC LIMIT ?",
+      "SELECT id, icon,title, description FROM why_choose_us ORDER BY id DESC LIMIT ?",
       [limit]
     );
 

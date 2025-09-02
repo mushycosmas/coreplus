@@ -18,11 +18,10 @@ const ManageHeroSection: React.FC = () => {
   const [items, setItems] = useState<HeroSection[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<HeroSection | null>(null);
-  const [formData, setFormData] = useState<HeroSection>({
-    id: 0,
+  const [formData, setFormData] = useState({
     title: "",
     subtitle: "",
-    background_image: "",
+    background_image: undefined as File | undefined,
     cta_text: "",
     cta_link: "",
   });
@@ -54,14 +53,19 @@ const ManageHeroSection: React.FC = () => {
   const openModal = (item?: HeroSection) => {
     if (item) {
       setEditing(item);
-      setFormData({ ...item });
+      setFormData({
+        title: item.title,
+        subtitle: item.subtitle,
+        background_image: undefined,
+        cta_text: item.cta_text || "",
+        cta_link: item.cta_link || "",
+      });
     } else {
       setEditing(null);
       setFormData({
-        id: 0,
         title: "",
         subtitle: "",
-        background_image: "",
+        background_image: undefined,
         cta_text: "",
         cta_link: "",
       });
@@ -70,15 +74,18 @@ const ManageHeroSection: React.FC = () => {
   };
 
   const handleSave = async () => {
-    const method = editing ? "PUT" : "POST";
     const url = editing ? `/api/hero-section/${editing.id}` : "/api/hero-section";
+    const method = editing ? "PUT" : "POST";
+
+    const body = new FormData();
+    body.append("title", formData.title);
+    body.append("subtitle", formData.subtitle);
+    body.append("cta_text", formData.cta_text);
+    body.append("cta_link", formData.cta_link);
+    if (formData.background_image) body.append("background_image", formData.background_image);
 
     try {
-      await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      await fetch(url, { method, body });
       setShowModal(false);
       fetchItems();
     } catch (err) {
@@ -171,13 +178,26 @@ const ManageHeroSection: React.FC = () => {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Background Image URL</Form.Label>
+              <Form.Label>Background Image</Form.Label>
               <Form.Control
-                type="text"
-                value={formData.background_image}
-                onChange={(e) => setFormData({ ...formData, background_image: e.target.value })}
-                placeholder="https://example.com/image.jpg"
+                type="file"
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    background_image: e.target.files ? e.target.files[0] : undefined,
+                  })
+                }
               />
+              {editing && editing.background_image && !formData.background_image && (
+                <div className="mt-2" style={{ width: 100, height: 60, position: "relative" }}>
+                  <Image
+                    src={editing.background_image}
+                    alt={editing.title}
+                    fill
+                    style={{ objectFit: "cover" }}
+                  />
+                </div>
+              )}
             </Form.Group>
 
             <Form.Group className="mb-3">
@@ -186,7 +206,6 @@ const ManageHeroSection: React.FC = () => {
                 type="text"
                 value={formData.cta_text}
                 onChange={(e) => setFormData({ ...formData, cta_text: e.target.value })}
-                placeholder="Call to Action"
               />
             </Form.Group>
 
@@ -196,7 +215,6 @@ const ManageHeroSection: React.FC = () => {
                 type="text"
                 value={formData.cta_link}
                 onChange={(e) => setFormData({ ...formData, cta_link: e.target.value })}
-                placeholder="https://example.com"
               />
             </Form.Group>
           </Form>

@@ -9,30 +9,38 @@ interface HeroImage {
   tagline: string;
 }
 
-const images: HeroImage[] = [
-  {
-    url: "/hero/service-01.jpg",
-    title: "Elevate Your Business",
-    tagline: "Transform your business with strategic HR solutions.",
-  },
-  {
-    url: "/hero/service-02.jpg",
-    title: "Empower Your Team",
-    tagline: "Build stronger teams through effective HR management.",
-  },
-  {
-    url: "/hero/service-03.jpg",
-    title: "Optimize Performance",
-    tagline: "Maximize employee performance with innovative solutions.",
-  },
-];
-
 const HeroSection: React.FC = () => {
+  const [images, setImages] = useState<HeroImage[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [animateClass, setAnimateClass] = useState("animate");
 
+  // Fetch hero sections from API
+  const fetchHeroSections = async () => {
+    try {
+      const res = await fetch("/api/hero-section/heroSection");
+      const data = await res.json();
+
+      // Ensure data.items exists
+      const mapped: HeroImage[] = (data.items || []).map((item: any) => ({
+        url: item.background_image || "/hero/default.jpg",
+        title: item.title,
+        tagline: item.subtitle,
+      }));
+
+      setImages(mapped);
+    } catch (err) {
+      console.error("Failed to fetch hero sections:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchHeroSections();
+  }, []);
+
   // Slide change interval
   useEffect(() => {
+    if (images.length === 0) return;
+
     const intervalId = setInterval(() => {
       setAnimateClass(""); // reset animation
       setCurrentImageIndex((prev) =>
@@ -41,7 +49,7 @@ const HeroSection: React.FC = () => {
     }, 5000);
 
     return () => clearInterval(intervalId);
-  }, []); // ✅ empty array because images is constant
+  }, [images]);
 
   // Trigger animation class
   useEffect(() => {
@@ -50,6 +58,8 @@ const HeroSection: React.FC = () => {
       return () => clearTimeout(timeoutId);
     }
   }, [animateClass]);
+
+  if (images.length === 0) return null; // wait for data
 
   return (
     <section className="hero-section">
