@@ -50,50 +50,73 @@ function parseForm(req: NextApiRequest): Promise<{ fields: ServiceFormFields; fi
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
-
   if (!id || Array.isArray(id)) return res.status(400).json({ message: "Invalid service ID" });
 
-  if (req.method !== "PUT") return res.status(405).json({ message: "Method not allowed" });
-
   try {
-    const { fields, files } = await parseForm(req);
+    // 🔹 UPDATE service (PUT)
+    if (req.method === "PUT") {
+      const { fields, files } = await parseForm(req);
 
-    const title = Array.isArray(fields.title) ? fields.title[0] : fields.title ?? "";
-    const description = Array.isArray(fields.description) ? fields.description[0] : fields.description ?? "";
-    const icon = Array.isArray(fields.icon) ? fields.icon[0] : fields.icon ?? "";
+      const title = Array.isArray(fields.title) ? fields.title[0] : fields.title ?? "";
+      const description = Array.isArray(fields.description) ? fields.description[0] : fields.description ?? "";
+      const icon = Array.isArray(fields.icon) ? fields.icon[0] : fields.icon ?? "";
 
-    if (!title.trim() || !description.trim() || !icon.trim()) {
-      return res.status(400).json({ message: "Title, description, and icon are required" });
-    }
-
-    // Get existing service
-    const [existingRows] = await db.query<ServiceRow[]>("SELECT * FROM services WHERE id = ?", [id]);
-    const existing = existingRows[0];
-    if (!existing) return res.status(404).json({ message: "Service not found" });
-
-    // Handle new image
-    const uploadedFile = files.image?.[0];
-    let imagePath: string | null = existing.image || null;
-    if (uploadedFile) {
-      imagePath = `/uploads/${path.basename(uploadedFile.filepath)}`;
-
-      // Delete old image if exists
-      if (existing.image) {
-        const oldPath = path.join(process.cwd(), "public", existing.image);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      if (!title.trim() || !description.trim() || !icon.trim()) {
+        return res.status(400).json({ message: "Title, description, and icon are required" });
       }
+
+      // Get existing service
+      const [existingRows] = await db.query<ServiceRow[]>("SELECT * FROM services WHERE id = ?", [id]);
+      const existing = existingRows[0];
+      if (!existing) return res.status(404).json({ message: "Service not found" });
+
+      // Handle new image
+      const uploadedFile = files.image?.[0];
+      let imagePath: string | null = existing.image || null;
+      if (uploadedFile) {
+        imagePath = `/uploads/${path.basename(uploadedFile.filepath)}`;
+
+        // Delete old image if exists
+        if (existing.image) {
+          const oldPath = path.join(process.cwd(), "public", existing.image);
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        }
+      }
+
+      // Update DB
+      await db.query<ResultSetHeader>(
+        "UPDATE services SET title = ?, description = ?, icon = ?, image = ? WHERE id = ?",
+        [title, description, icon, imagePath, id]
+      );
+
+      return res.status(200).json({ id: Number(id), title, description, icon, image: imagePath });
     }
 
-    // Update service in DB
-    await db.query<ResultSetHeader>(
-      "UPDATE services SET title = ?, description = ?, icon = ?, image = ? WHERE id = ?",
-      [title, description, icon, imagePath, id]
-    );
+    // 🔹 DELETE service
+    if (req.method === "DELETE") {
+      // Check if service exists
+      const [rows] = await db.query<ServiceRow[]>("SELECT * FROM services WHERE id = ?", [id]);
+      const existing = rows[0];
+      if (!existing) return res.status(404).json({ message: "Service not found" });
 
-    res.status(200).json({ id: Number(id), title, description, icon, image: imagePath });
+      // Delete image file if exists
+      if (existing.image) {
+        const imagePath = path.join(process.cwd(), "public", existing.image);
+        if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+      }
+
+      // Delete from DB
+      await db.query<ResultSetHeader>("DELETE FROM services WHERE id = ?", [id]);
+
+      return res.status(200).json({ message: "Service deleted successfully" });
+    }
+
+    // If other methods
+    res.setHeader("Allow", ["PUT", "DELETE"]);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Server error";
-    console.error("Error updating service:", error);
+    console.error("Service API error:", error);
     res.status(500).json({ message });
   }
 }
