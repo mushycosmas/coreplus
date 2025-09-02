@@ -158,22 +158,35 @@ const Home: React.FC = () => {
       {/* Services */}
       <Container className="my-5 text-center section services-section p-5">
         <h2 className="section-title">Our Services</h2>
-        <Row className="justify-content-center">
-          {services.length > 0 ? services.map(service => (
-            <Col md={4} className="mb-4" key={service.id}>
-              <Card className="p-4 shadow-sm service-card h-100 text-center">
-                {service.image && (
-                  <Image src={service.image} alt={service.title} width={400} height={250} className="card-img-top" />
-                )}
-                <Card.Body>
-                  <Card.Title>{service.title}</Card.Title>
-                  <Card.Text>{service.description}</Card.Text>
-                  <Button variant="link" href="/services">View More Services</Button>
-                </Card.Body>
-              </Card>
-            </Col>
-          )) : <p>No services available</p>}
-        </Row>
+       <Row className="justify-content-center">
+  {services.length > 0 ? (
+    services.map((service) => (
+      <Col md={4} className="mb-4" key={service.id}>
+        <Card className="p-4 shadow-sm service-card h-100 text-center">
+          {service.image && (
+            <Card.Img
+              variant="top"
+              src={service.image}
+              alt={service.title}
+              style={{ height: "200px", objectFit: "cover" }}
+              className="card-img-top"
+            />
+          )}
+          <Card.Body>
+            <Card.Title>{service.title}</Card.Title>
+            <Card.Text>{service.description?.replace(/'/g, "&apos;")}</Card.Text>
+            <Button variant="link" href="/services">
+              View More Services
+            </Button>
+          </Card.Body>
+        </Card>
+      </Col>
+    ))
+  ) : (
+    <p>No services available</p>
+  )}
+</Row>
+
       </Container>
 
       {/* Why Choose Us */}
