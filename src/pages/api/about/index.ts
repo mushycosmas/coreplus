@@ -43,16 +43,16 @@ interface AboutData extends RowDataPacket {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // GET /api/about
+    // ---------------- GET: List all about entries ----------------
     if (req.method === "GET") {
       const [rows] = await db.query<AboutData[]>("SELECT * FROM about ORDER BY id DESC");
       if (!rows || rows.length === 0) {
-        return res.status(404).json({ message: "No about data found" });
+        return res.status(404).json({ message: "No About data found" });
       }
       return res.status(200).json(rows);
     }
 
-    // POST /api/about
+    // ---------------- POST: Create new about entry ----------------
     if (req.method === "POST") {
       const { fields, files } = await parseForm(req);
 
@@ -61,8 +61,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const icon = Array.isArray(fields.icon) ? fields.icon[0] : fields.icon;
 
       // Handle uploaded image
-      const uploadedFile = files.image as File | undefined;
-      const imagePath = uploadedFile ? `/uploads/${path.basename(uploadedFile.filepath)}` : null;
+      const uploadedFile = (files.image as File[] | File | undefined);
+      let imagePath: string | null = null;
+
+      if (uploadedFile) {
+        const file = Array.isArray(uploadedFile) ? uploadedFile[0] : uploadedFile;
+        imagePath = `/uploads/${path.basename(file.filepath)}`;
+      }
 
       // Insert into DB
       const [result] = await db.query<ResultSetHeader>(
@@ -79,8 +84,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    return res.status(405).json({ message: "Method not allowed" });
+    // ---------------- Method Not Allowed ----------------
+    res.setHeader("Allow", ["GET", "POST"]);
+    return res.status(405).json({ message: `Method ${req.method} Not Allowed` });
   } catch (err) {
+    console.error("Error handling /api/about:", err);
     const message = err instanceof Error ? err.message : "Server error";
     return res.status(500).json({ message });
   }
