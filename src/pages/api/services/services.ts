@@ -24,9 +24,18 @@ export default async function handler(
   }
 
   try {
-    const [rows] = await db.query<Service[]>(
-      "SELECT id, title, description, image FROM services ORDER BY id DESC"
-    );
+    // Read limit from query (optional)
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : null;
+
+    let query = "SELECT id, title, description, image FROM services ORDER BY id DESC";
+    const params: any[] = [];
+
+    if (limit && !isNaN(limit)) {
+      query += " LIMIT ?";
+      params.push(limit);
+    }
+
+    const [rows] = await db.query<Service[]>(query, params);
 
     if (!rows.length) {
       return res.status(404).json({ message: "No services found." });

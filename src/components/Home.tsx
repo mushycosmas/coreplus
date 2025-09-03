@@ -57,7 +57,7 @@ const Home: React.FC = () => {
         const aboutData = await aboutRes.json();
         setAboutUs(aboutData);
 
-        const servicesRes = await fetch("/api/services/services");
+        const servicesRes = await fetch("/api/services/services?limit=6");
         if (!servicesRes.ok) throw new Error("Failed to fetch Services.");
         const servicesData = await servicesRes.json();
         setServices(servicesData.services);
