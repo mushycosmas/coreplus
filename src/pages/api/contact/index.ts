@@ -2,9 +2,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { db } from "@/lib/db";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 
-// Define the type for a contact record
 interface ContactData extends RowDataPacket {
   id: number;
+  name: string;
   email: string;
   phone: string;
   address: string;
@@ -20,19 +20,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "POST") {
-      const { email, phone, address, message } = req.body;
+      const { name, email, phone, address, message } = req.body;
 
-      if (!email || !phone || !address || !message) {
+      if (!name || !email || !phone || !address || !message) {
         return res.status(400).json({ message: "All fields are required" });
       }
 
       const [result] = await db.query<ResultSetHeader>(
-        "INSERT INTO contact (email, phone, address, message) VALUES (?, ?, ?, ?)",
-        [email, phone, address, message]
+        "INSERT INTO contact (name, email, phone, address, message) VALUES (?, ?, ?, ?, ?)",
+        [name, email, phone, address, message]
       );
 
       return res.status(201).json({
         id: result.insertId,
+        name,
         email,
         phone,
         address,

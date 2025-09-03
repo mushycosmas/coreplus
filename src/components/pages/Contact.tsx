@@ -6,6 +6,7 @@ import { FaEnvelope, FaPhoneAlt, FaMapMarkerAlt } from "react-icons/fa";
 import ReUseHeroSection from "../section/ReUseHeroSection";
 
 interface FormData {
+  name: string;
   email: string;
   phone: string;
   address: string;
@@ -20,6 +21,7 @@ interface ContactInfo {
 
 const Contact: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
+    name: "",
     email: "",
     phone: "",
     address: "",
@@ -31,20 +33,19 @@ const Contact: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Fetch Contact Info from API
-  const fetchContact = async () => {
-    try {
-      const res = await fetch("/api/contact-info/contact");
-      const data: ContactInfo = await res.json();
-      setContact(data);
-    } catch (err) {
-      console.error("Failed to fetch contact info:", err);
-    } finally {
-      setLoadingContact(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchContact = async () => {
+      try {
+        const res = await fetch("/api/contact-info/contact");
+        const data: ContactInfo = await res.json();
+        setContact(data);
+      } catch (err) {
+        console.error("Failed to fetch contact info:", err);
+      } finally {
+        setLoadingContact(false);
+      }
+    };
+
     fetchContact();
   }, []);
 
@@ -55,7 +56,9 @@ const Contact: React.FC = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!formData.email || !formData.phone || !formData.address || !formData.message) {
+    const { name, email, phone, address, message } = formData;
+
+    if (!name || !email || !phone || !address || !message) {
       setErrorMessage("All fields are required.");
       setSuccessMessage(null);
       return;
@@ -73,7 +76,13 @@ const Contact: React.FC = () => {
       if (res.ok) {
         setSuccessMessage("Your message has been sent successfully!");
         setErrorMessage(null);
-        setFormData({ email: "", phone: "", address: "", message: "" });
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          address: "",
+          message: "",
+        });
       } else {
         setErrorMessage(data.message || "Something went wrong.");
         setSuccessMessage(null);
@@ -100,6 +109,18 @@ const Contact: React.FC = () => {
               {successMessage && <Alert variant="success">{successMessage}</Alert>}
 
               <Form onSubmit={handleSubmit}>
+                <Form.Group controlId="formName" className="mb-3">
+                  <Form.Label>Name:</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter your name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+
                 <Form.Group controlId="formEmail" className="mb-3">
                   <Form.Label>Email:</Form.Label>
                   <Form.Control
@@ -153,7 +174,13 @@ const Contact: React.FC = () => {
                   variant="primary"
                   type="submit"
                   className="w-100"
-                  disabled={!formData.email || !formData.phone || !formData.address || !formData.message}
+                  disabled={
+                    !formData.name ||
+                    !formData.email ||
+                    !formData.phone ||
+                    !formData.address ||
+                    !formData.message
+                  }
                 >
                   Submit
                 </Button>
