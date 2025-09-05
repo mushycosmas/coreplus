@@ -33,7 +33,7 @@ const Services: React.FC = () => {
         ]);
 
         if (!servicesRes.ok || !whyChooseRes.ok) {
-          throw new Error("One or more requests failed.");
+          throw new Error("Failed to fetch data.");
         }
 
         const servicesData = await servicesRes.json();
@@ -42,16 +42,16 @@ const Services: React.FC = () => {
         if (Array.isArray(servicesData.services)) {
           setServices(servicesData.services);
         } else {
-          throw new Error("Unexpected format in services response.");
+          throw new Error("Unexpected format for services.");
         }
 
         if (Array.isArray(whyChooseData.items)) {
           setWhyChooseUs(whyChooseData.items);
         } else {
-          throw new Error("Unexpected format in Why Choose Us response.");
+          throw new Error("Unexpected format for Why Choose Us.");
         }
-      } catch (err) {
-        setError("Failed to load data. Please try again later.");
+      } catch {
+        setError("Unable to load services. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -70,19 +70,21 @@ const Services: React.FC = () => {
       <Container className="my-5">
         <Row className="mb-4">
           <Col>
-            <h2>Our Services</h2>
+            <h2 className="fw-bold">Our Services</h2>
           </Col>
         </Row>
 
+        {/* Loading */}
         {loading && (
           <Row>
             <Col className="text-center">
               <Spinner animation="border" variant="primary" />
-              <p>Loading data...</p>
+              <p className="mt-2">Loading services...</p>
             </Col>
           </Row>
         )}
 
+        {/* Error */}
         {error && (
           <Row>
             <Col className="text-center">
@@ -91,42 +93,47 @@ const Services: React.FC = () => {
           </Row>
         )}
 
+        {/* Services */}
         {!loading && !error && (
-          <>
-            {/* Services Section */}
-            <Row>
-              {services.map((service) => (
-                <Col md={4} key={service.id}>
-                  <Card className="mb-4 shadow-sm h-100">
-                    <div style={{ position: "relative", width: "100%", height: "200px" }}>
-                      <Image
-                        src={service.image}
-                        alt={service.title}
-                        layout="fill"
-                        objectFit="cover"
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                      />
-                    </div>
-                    <Card.Body>
-                      <Card.Title>{service.title}</Card.Title>
-                      <Card.Text>{service.description?.replace(/'/g, "&apos;")}</Card.Text>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
+          <Row>
+            {services.map((service) => (
+              <Col key={service.id} md={4} sm={6} xs={12} className="mb-4 px-2">
+                <Card className="shadow-sm h-100 text-center">
+                  <div style={{ width: "100%", height: "250px", position: "relative", background: "#f9f9f9" }}>
+                    <Image
+                      src={service.image}
+                      alt={service.title}
+                      fill
+                      style={{
+                        objectFit: "contain",
+                        padding: "10px",
+                      }}
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                    />
+                  </div>
+                  <Card.Body>
+                    <Card.Title>{service.title}</Card.Title>
+                    <Card.Text>
+                      {service.description?.replace(/'/g, "&apos;")}
+                    </Card.Text>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        )}
 
-            {/* Why Choose Us Section */}
-            {whyChooseUs.length > 0 && (
-              <Row className="mt-5">
-                <Col>
-                  <h2>Why Choose Us?</h2>
-                  <h4>{whyChooseUs[0].title?.replace(/'/g, "&apos;")}</h4>
-                  <p>{whyChooseUs[0].description?.replace(/'/g, "&apos;")}</p>
-                </Col>
-              </Row>
-            )}
-          </>
+        {/* Why Choose Us */}
+        {!loading && !error && whyChooseUs.length > 0 && (
+          <Row className="mt-5">
+            <Col>
+              <h2 className="fw-bold">Why Choose Us?</h2>
+              <h4 className="mt-3">
+                {whyChooseUs[0].title.replace(/'/g, "&apos;")}
+              </h4>
+              <p>{whyChooseUs[0].description.replace(/'/g, "&apos;")}</p>
+            </Col>
+          </Row>
         )}
       </Container>
     </>
