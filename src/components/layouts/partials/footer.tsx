@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col } from "react-bootstrap";
@@ -59,7 +59,7 @@ const Footer = () => {
 
   // Styles
   const footerStyle: React.CSSProperties = {
-    backgroundColor: "#276795",
+    backgroundColor: "#004b87", // Blue color from logo
     color: "#ffffff",
     padding: "20px 0",
     textAlign: "center",
@@ -126,6 +126,7 @@ const Footer = () => {
         </p>
       </Container>
 
+      {/* CSS Adjustments */}
       <style jsx>{`
         .footer-link {
           display: inline-block;
@@ -133,7 +134,7 @@ const Footer = () => {
           margin: 4px;
           border-radius: 5px;
           background-color: rgba(255, 255, 255, 0.1);
-          color: #f8f9fa;
+          color: #f05a28; /* Orange color from logo */
           text-decoration: none;
           transition: all 0.3s ease;
           position: relative;
@@ -147,12 +148,12 @@ const Footer = () => {
           bottom: -2px;
           width: 0;
           height: 2px;
-          background-color: #ffc107;
+          background-color: #ffc107; /* Yellow accent for hover */
           transition: width 0.3s ease;
         }
 
         .footer-link:hover {
-          color: #ffc107;
+          color: #ffffff;
           background-color: rgba(255, 255, 255, 0.2);
         }
 
@@ -161,7 +162,7 @@ const Footer = () => {
         }
 
         .learn-more {
-          color: #ffc107;
+          color: #ffc107; /* Yellow for Learn More link */
           text-decoration: none;
           margin-top: 10px;
           display: inline-block;

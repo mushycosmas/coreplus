@@ -1,8 +1,9 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Navbar, Nav, Container } from 'react-bootstrap';
+import Image from 'next/image';
 
 const Header: React.FC = () => {
   const navItems = [
@@ -14,22 +15,15 @@ const Header: React.FC = () => {
     { name: 'Contact Us', path: '/contact-us' },
   ];
 
-  // Internal Styles
+  // Adjusted navbar style for contrast and visibility of logo text
   const navbarStyle = {
-    backgroundColor: "#343a40",
+    backgroundColor: "#ffffff", // Light background for better contrast with blue logo
     padding: "15px 0",
     boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
   };
 
-  const logoStyle = {
-    color: "#17a2b8",
-    fontSize: "24px",
-    fontWeight: "bold",
-    textDecoration: "none",
-  };
-
   const navItemStyle = {
-    backgroundColor: "#17a2b8",
+    backgroundColor: "#f05a28", // Orange color from logo
     color: "#ffffff",
     fontSize: "16px",
     fontWeight: "500",
@@ -42,7 +36,7 @@ const Header: React.FC = () => {
   };
 
   const hoverEffect = {
-    backgroundColor: "#138496",
+    backgroundColor: "#003d6d", // Darker blue for hover effect
     color: "#ffffff",
   };
 
@@ -51,9 +45,9 @@ const Header: React.FC = () => {
   return (
     <Navbar expand="lg" sticky="top" style={navbarStyle}>
       <Container fluid>
-        {/* Logo */}
-        <Link href="/" style={logoStyle}>
-          CorePlus
+        {/* Logo Only (No Text) */}
+        <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
+          <Image src="/logo/logo1.png" alt="Logo" width={160} height={50} />
         </Link>
 
         <Navbar.Toggle aria-controls="navbarNav" />
