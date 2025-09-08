@@ -57,9 +57,9 @@ const Footer = () => {
     fetchAbouts();
   }, []);
 
-  // Styles
+  // Styles for Footer
   const footerStyle: React.CSSProperties = {
-    backgroundColor: "#004b87", // Blue color from logo
+    backgroundColor: "#004b87", // Blue color to match the header
     color: "#ffffff",
     padding: "20px 0",
     textAlign: "center",
@@ -121,8 +121,7 @@ const Footer = () => {
 
         <hr style={{ backgroundColor: "#ffffff" }} />
         <p>
-          &copy; {new Date().getFullYear()} CorePlus Consulting Limited. All
-          Rights Reserved.
+          &copy; {new Date().getFullYear()} CorePlus Consulting Limited. All Rights Reserved.
         </p>
       </Container>
 

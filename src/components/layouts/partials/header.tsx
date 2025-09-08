@@ -51,7 +51,7 @@ const Header: React.FC = () => {
       <Container fluid>
         {/* Logo Only (No Text) */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
-          <Image src="/logo1.png" alt="Logo" width={160} height={50} />
+          <Image src="/logo/logo1.png" alt="Logo" width={160} height={50} />
         </Link>
 
         <Navbar.Toggle aria-controls="navbarNav" />
