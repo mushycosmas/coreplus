@@ -20,6 +20,10 @@ const Header: React.FC = () => {
     backgroundColor: "#ffffff", // Light background for better contrast with blue logo
     padding: "15px 0",
     boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
+    position: 'fixed',  // Fix the navbar position
+    top: 0,  // Make sure it's fixed to the top of the screen
+    width: '100%',  // Ensure it spans the full width of the viewport
+    zIndex: 999,  // Ensure it stays on top of other content
   };
 
   const navItemStyle = {
@@ -43,11 +47,11 @@ const Header: React.FC = () => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
-    <Navbar expand="lg" sticky="top" style={navbarStyle}>
+    <Navbar expand="lg" style={navbarStyle}>
       <Container fluid>
         {/* Logo Only (No Text) */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
-          <Image src="/logo/logo1.png" alt="Logo" width={160} height={50} />
+          <Image src="/logo1.png" alt="Logo" width={160} height={50} />
         </Link>
 
         <Navbar.Toggle aria-controls="navbarNav" />
